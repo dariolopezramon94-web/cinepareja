@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
         body { background: #060C1A; color: #F8FAFC; padding: 1.2rem; min-height: 100vh;
@@ -258,6 +259,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     let currentCouple = null;
     let currentPerson = null;
@@ -286,61 +288,189 @@
     }
 
     // ==================== AUTENTICACIÓN ====================
+    // ==================== AUTENTICACIÓN ====================
     async function renderAuthScreen() {
         appRoot.innerHTML = `
-            <div style="max-width:450px; margin:2rem auto; background:#1E293B; padding:1.8rem; border-radius:2rem; border:1px solid #6D28D9;">
-                <h2 style="text-align:center; margin-bottom:1rem; color:#F8FAFC;">CinePareja</h2>
-                <div style="margin:1rem 0;">
-                    <button id="btnCreate" class="primary" style="width:100%">Crear nueva pareja</button>
-                    <button id="btnJoin" class="outline" style="width:100%; margin-top:0.6rem">Unirse a pareja existente</button>
+            <div style="max-width:460px; margin:2rem auto; background:linear-gradient(165deg,rgba(10,15,36,0.98),rgba(16,24,56,0.96)); padding:2rem; border-radius:1.8rem; border:1px solid rgba(109,40,217,0.3); box-shadow:0 8px 48px rgba(0,0,0,0.6);">
+                <h2 style="text-align:center; margin-bottom:0.3rem; background:linear-gradient(135deg,#6D28D9,#A855F7,#06B6D4); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:1.8rem; font-weight:800;">CinePareja</h2>
+                <p style="text-align:center; color:#334155; font-size:0.72rem; margin-bottom:1.5rem;">Tu diario cinematográfico en pareja</p>
+                <div style="display:flex; background:rgba(8,12,30,0.7); border-radius:0.8rem; padding:0.25rem; margin-bottom:1.5rem; border:1px solid rgba(30,41,70,0.8);">
+                    <button id="tabLoginBtn" style="flex:1; border:none; border-radius:0.6rem; padding:0.4rem; font-size:0.75rem; font-weight:700; cursor:pointer; background:linear-gradient(115deg,rgba(109,40,217,0.8),rgba(139,92,246,0.7)); color:#F8FAFC; box-shadow:0 2px 10px rgba(109,40,217,0.3);">Iniciar sesión</button>
+                    <button id="tabRegisterBtn" style="flex:1; border:none; border-radius:0.6rem; padding:0.4rem; font-size:0.75rem; font-weight:700; cursor:pointer; background:transparent; color:#475569;">Crear cuenta</button>
                 </div>
-                <div id="createPanel" class="hidden">
-                    <input type="text" id="newCode" placeholder="Código único (ej. CINE123)">
-                    <input type="text" id="partner1Name" placeholder="Nombre de la pareja 1">
-                    <input type="text" id="partner2Name" placeholder="Nombre de la pareja 2">
+                <div id="loginPanel">
+                    <input type="text" id="loginCode" placeholder="Código de pareja (ej. CINE123)" style="text-transform:uppercase;">
+                    <input type="password" id="loginPassword" placeholder="Contraseña">
+                    <button id="confirmLogin" class="primary" style="width:100%; padding:0.6rem; font-size:0.85rem; margin-bottom:0.6rem;">Entrar</button>
+                    <div style="display:flex; justify-content:space-between; margin-top:0.1rem;">
+                        <button id="forgotPasswordBtn" style="background:transparent; border:none; color:#475569; font-size:0.68rem; cursor:pointer; padding:0.2rem;">¿Olvidaste tu contraseña?</button>
+                        <button id="forgotCodeBtn" style="background:transparent; border:none; color:#475569; font-size:0.68rem; cursor:pointer; padding:0.2rem;">¿No recuerdas tu código?</button>
+                    </div>
+                    <div id="loginError" style="color:#F87171; font-size:0.7rem; margin-top:0.4rem; text-align:center; display:none;"></div>
+                </div>
+                <div id="registerPanel" style="display:none;">
+                    <input type="text" id="newCode" placeholder="Código único de pareja (ej. CINE123)" style="text-transform:uppercase;">
+                    <input type="text" id="partner1Name" placeholder="Nombre persona 1">
+                    <input type="text" id="partner2Name" placeholder="Nombre persona 2">
+                    <input type="email" id="registerEmail" placeholder="Email de recuperación">
                     <input type="password" id="newPassword" placeholder="Contraseña común">
-                    <button id="confirmCreate" class="primary" style="width:100%">Crear cuenta</button>
+                    <input type="password" id="confirmPassword" placeholder="Confirmar contraseña">
+                    <button id="confirmCreate" class="primary" style="width:100%; padding:0.6rem; font-size:0.85rem; margin-bottom:0.5rem;">Crear cuenta</button>
+                    <div id="registerError" style="color:#F87171; font-size:0.7rem; margin-top:0.4rem; text-align:center; display:none;"></div>
                 </div>
-                <div id="joinPanel" class="hidden">
-                    <input type="text" id="joinCode" placeholder="Código de pareja">
-                    <input type="password" id="joinPassword" placeholder="Contraseña">
-                    <button id="confirmJoin" class="primary" style="width:100%">Entrar</button>
+                <div id="forgotPanel" style="display:none;">
+                    <p style="color:#94A3B8; font-size:0.75rem; margin-bottom:0.6rem;">Ingresa el email con el que registraste tu pareja y te enviaremos un enlace para restablecer la contraseña.</p>
+                    <div style="display:flex; align-items:flex-start; gap:0.5rem; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:0.7rem; padding:0.6rem 0.75rem; margin-bottom:0.8rem;">
+                        <span style="font-size:1rem; flex-shrink:0;">📩</span>
+                        <p style="color:#F59E0B; font-size:0.68rem; line-height:1.5; margin:0;">Si no ves el correo en tu bandeja principal, <strong>revisa la carpeta de SPAM o correo no deseado</strong>. A veces los correos de recuperación llegan ahí.</p>
+                    </div>
+                    <input type="email" id="recoveryEmail" placeholder="Email de recuperación">
+                    <button id="sendRecoveryBtn" class="primary" style="width:100%; padding:0.6rem; font-size:0.85rem; margin-bottom:0.5rem;">Enviar enlace de recuperación</button>
+                    <button id="backToLoginBtn" style="width:100%; background:transparent; border:none; color:#475569; font-size:0.7rem; cursor:pointer; padding:0.2rem;">← Volver al login</button>
+                    <div id="recoveryMsg" style="font-size:0.72rem; margin-top:0.5rem; text-align:center; display:none;"></div>
+                </div>
+                <div id="codePanel" style="display:none;">
+                    <p style="color:#94A3B8; font-size:0.75rem; margin-bottom:0.8rem;">Ingresa tu email y te mostraremos el código de pareja asociado a esa cuenta.</p>
+                    <input type="email" id="codeRecoveryEmail" placeholder="Tu email registrado">
+                    <button id="findCodeBtn" class="primary" style="width:100%; padding:0.6rem; font-size:0.85rem; margin-bottom:0.5rem;">Buscar mi código</button>
+                    <button id="backFromCodeBtn" style="width:100%; background:transparent; border:none; color:#475569; font-size:0.7rem; cursor:pointer; padding:0.2rem;">← Volver al login</button>
+                    <div id="codeResult" style="display:none; margin-top:0.8rem; padding:1rem; background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.3); border-radius:0.8rem; text-align:center;">
+                        <div style="font-size:0.65rem; color:#94A3B8; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.08em;">Tu código de pareja es:</div>
+                        <div id="codeResultValue" style="font-size:1.8rem; font-weight:800; background:linear-gradient(135deg,#06B6D4,#8B5CF6); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:0.12em;"></div>
+                        <div style="font-size:0.62rem; color:#334155; margin-top:0.4rem;">Guárdalo en un lugar seguro 🔐</div>
+                        <button id="useCodeNowBtn" class="primary" style="width:100%; margin-top:0.8rem; font-size:0.75rem; padding:0.45rem;">Usar este código ahora</button>
+                    </div>
+                    <div id="codeError" style="color:#F87171; font-size:0.7rem; margin-top:0.4rem; text-align:center; display:none;"></div>
                 </div>
             </div>
         `;
-        document.getElementById('btnCreate').onclick = () => {
-            document.getElementById('createPanel').classList.toggle('hidden');
-            document.getElementById('joinPanel').classList.add('hidden');
+
+        function switchTab(tab) {
+            document.getElementById('loginPanel').style.display    = tab === 'login'    ? 'block' : 'none';
+            document.getElementById('registerPanel').style.display = tab === 'register' ? 'block' : 'none';
+            document.getElementById('forgotPanel').style.display   = tab === 'forgot'   ? 'block' : 'none';
+            document.getElementById('codePanel').style.display     = tab === 'code'     ? 'block' : 'none';
+            const lb = document.getElementById('tabLoginBtn'), rb = document.getElementById('tabRegisterBtn');
+            if (lb && rb) {
+                lb.style.background = tab==='login' ? 'linear-gradient(115deg,rgba(109,40,217,0.8),rgba(139,92,246,0.7))' : 'transparent';
+                lb.style.color      = tab==='login' ? '#F8FAFC' : '#475569';
+                lb.style.boxShadow  = tab==='login' ? '0 2px 10px rgba(109,40,217,0.3)' : 'none';
+                rb.style.background = tab==='register' ? 'linear-gradient(115deg,rgba(109,40,217,0.8),rgba(139,92,246,0.7))' : 'transparent';
+                rb.style.color      = tab==='register' ? '#F8FAFC' : '#475569';
+                rb.style.boxShadow  = tab==='register' ? '0 2px 10px rgba(109,40,217,0.3)' : 'none';
+            }
+        }
+
+        document.getElementById('tabLoginBtn').onclick    = () => switchTab('login');
+        document.getElementById('tabRegisterBtn').onclick = () => switchTab('register');
+        document.getElementById('forgotPasswordBtn').onclick = () => switchTab('forgot');
+        document.getElementById('forgotCodeBtn').onclick     = () => switchTab('code');
+        document.getElementById('backToLoginBtn').onclick    = () => switchTab('login');
+        document.getElementById('backFromCodeBtn').onclick   = () => switchTab('login');
+
+        // ── LOGIN ──
+        document.getElementById('confirmLogin').onclick = async () => {
+            const code  = document.getElementById('loginCode').value.trim().toUpperCase();
+            const pwd   = document.getElementById('loginPassword').value;
+            const errEl = document.getElementById('loginError');
+            errEl.style.display = 'none';
+            if (!code || !pwd) { errEl.textContent = 'Completa todos los campos.'; errEl.style.display = 'block'; return; }
+            try {
+                const coupleSnap = await db.collection('couples').doc(code).get();
+                if (!coupleSnap.exists) { errEl.textContent = 'Código de pareja no existe.'; errEl.style.display = 'block'; return; }
+                const coupleData = coupleSnap.data();
+                if (!coupleData.email) { errEl.textContent = 'Esta cuenta fue creada antes del nuevo sistema. Contacta soporte.'; errEl.style.display = 'block'; return; }
+                await auth.signInWithEmailAndPassword(coupleData.email, pwd);
+                currentCouple = { code, namePartner1: coupleData.namePartner1, namePartner2: coupleData.namePartner2, email: coupleData.email };
+                localStorage.setItem('cinepareja_couple', JSON.stringify(currentCouple));
+                renderUI();
+            } catch(e) {
+                let msg = 'Error al iniciar sesión.';
+                if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'Contraseña incorrecta.';
+                if (e.code === 'auth/too-many-requests') msg = 'Demasiados intentos. Recupera tu contraseña.';
+                errEl.textContent = msg; errEl.style.display = 'block';
+            }
         };
-        document.getElementById('btnJoin').onclick = () => {
-            document.getElementById('joinPanel').classList.toggle('hidden');
-            document.getElementById('createPanel').classList.add('hidden');
+
+        // ── RECUPERAR CONTRASEÑA ──
+        document.getElementById('sendRecoveryBtn').onclick = async () => {
+            const email = document.getElementById('recoveryEmail').value.trim();
+            const msgEl = document.getElementById('recoveryMsg');
+            if (!email) { msgEl.textContent = 'Ingresa tu email.'; msgEl.style.color='#F87171'; msgEl.style.display='block'; return; }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                msgEl.textContent = '✅ Email enviado. Revisa tu bandeja de entrada (y spam).';
+                msgEl.style.color = '#6EE7B7'; msgEl.style.display = 'block';
+            } catch(e) {
+                msgEl.textContent = 'No se encontró una cuenta con ese email.';
+                msgEl.style.color = '#F87171'; msgEl.style.display = 'block';
+            }
         };
+
+        // ── RECUPERAR CÓDIGO ──
+        document.getElementById('findCodeBtn').onclick = async () => {
+            const email  = document.getElementById('codeRecoveryEmail').value.trim().toLowerCase();
+            const errEl  = document.getElementById('codeError');
+            const resDiv = document.getElementById('codeResult');
+            errEl.style.display = 'none';
+            resDiv.style.display = 'none';
+            if (!email) { errEl.textContent = 'Ingresa tu email.'; errEl.style.display = 'block'; return; }
+            try {
+                const btn = document.getElementById('findCodeBtn');
+                btn.textContent = 'Buscando...'; btn.disabled = true;
+                // Search Firestore for a couple document with this email
+                const snap = await db.collection('couples').where('email', '==', email).limit(1).get();
+                btn.textContent = 'Buscar mi código'; btn.disabled = false;
+                if (snap.empty) {
+                    errEl.textContent = 'No encontramos ninguna pareja con ese email.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                const coupleData = snap.docs[0].data();
+                document.getElementById('codeResultValue').textContent = coupleData.code;
+                resDiv.style.display = 'block';
+                // Wire up "use this code now"
+                document.getElementById('useCodeNowBtn').onclick = () => {
+                    switchTab('login');
+                    document.getElementById('loginCode').value = coupleData.code;
+                    document.getElementById('loginPassword').focus();
+                };
+            } catch(e) {
+                const btn = document.getElementById('findCodeBtn');
+                btn.textContent = 'Buscar mi código'; btn.disabled = false;
+                document.getElementById('codeError').textContent = 'Error al buscar. Intenta de nuevo.';
+                document.getElementById('codeError').style.display = 'block';
+            }
+        };
+
+        // ── REGISTRO ──
         document.getElementById('confirmCreate').onclick = async () => {
-            const code = document.getElementById('newCode').value.trim().toUpperCase();
-            const p1 = document.getElementById('partner1Name').value.trim();
-            const p2 = document.getElementById('partner2Name').value.trim();
-            const pwd = document.getElementById('newPassword').value;
-            if (!code || !p1 || !p2 || !pwd) return alert("Complete todos los campos");
-            const coupleRef = db.collection("couples").doc(code);
-            const snap = await coupleRef.get();
-            if (snap.exists) return alert("Ese código ya existe, elija otro");
-            const pwdHash = await hashPassword(pwd);
-            await coupleRef.set({ code, namePartner1: p1, namePartner2: p2, passwordHash: pwdHash, specialCategories: {} });
-            currentCouple = { code, namePartner1: p1, namePartner2: p2, passwordHash: pwdHash };
-            renderUI();
-        };
-        document.getElementById('confirmJoin').onclick = async () => {
-            const code = document.getElementById('joinCode').value.trim().toUpperCase();
-            const pwd = document.getElementById('joinPassword').value;
-            const coupleRef = db.collection("couples").doc(code);
-            const snap = await coupleRef.get();
-            if (!snap.exists) return alert("Código no existe");
-            const data = snap.data();
-            const hashInput = await hashPassword(pwd);
-            if (data.passwordHash !== hashInput) return alert("Contraseña incorrecta");
-            currentCouple = { code, namePartner1: data.namePartner1, namePartner2: data.namePartner2, passwordHash: data.passwordHash };
-            renderUI();
+            const code  = document.getElementById('newCode').value.trim().toUpperCase();
+            const p1    = document.getElementById('partner1Name').value.trim();
+            const p2    = document.getElementById('partner2Name').value.trim();
+            const email = document.getElementById('registerEmail').value.trim();
+            const pwd   = document.getElementById('newPassword').value;
+            const pwd2  = document.getElementById('confirmPassword').value;
+            const errEl = document.getElementById('registerError');
+            errEl.style.display = 'none';
+            if (!code || !p1 || !p2 || !email || !pwd || !pwd2) { errEl.textContent = 'Completa todos los campos.'; errEl.style.display='block'; return; }
+            if (pwd !== pwd2) { errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display='block'; return; }
+            if (pwd.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display='block'; return; }
+            const existing = await db.collection('couples').doc(code).get();
+            if (existing.exists) { errEl.textContent = 'Ese código ya existe. Elige otro.'; errEl.style.display='block'; return; }
+            try {
+                await auth.createUserWithEmailAndPassword(email, pwd);
+                await db.collection('couples').doc(code).set({ code, namePartner1: p1, namePartner2: p2, email, specialCategories: {} });
+                currentCouple = { code, namePartner1: p1, namePartner2: p2, email };
+                localStorage.setItem('cinepareja_couple', JSON.stringify(currentCouple));
+                renderUI();
+            } catch(e) {
+                let msg = 'Error al crear la cuenta.';
+                if (e.code === 'auth/email-already-in-use') msg = 'Ese email ya tiene una cuenta. Usa otro o recupera tu contraseña.';
+                if (e.code === 'auth/invalid-email')        msg = 'Email inválido.';
+                if (e.code === 'auth/weak-password')        msg = 'Contraseña muy débil (mínimo 6 caracteres).';
+                errEl.textContent = msg; errEl.style.display = 'block';
+            }
         };
     }
 
@@ -364,7 +494,10 @@
                     <span>${currentPerson === 'partner1' ? currentCouple.namePartner1 : currentCouple.namePartner2}</span>
                     <button id="switchUserBtn" class="outline small">Cambiar usuario</button>
                 </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                <button id="changePasswordBtn" class="outline" style="font-size:0.68rem;">🔑 Cambiar contraseña</button>
                 <button id="logoutBtn" class="outline">Cerrar sesión</button>
+            </div>
             </div>
             <div class="tabs">
                 <button class="tab-btn active" data-tab="home">Inicio</button>
@@ -376,8 +509,13 @@
             <div id="wishlistPanel" class="panel"></div>
             <div id="modal" class="modal hidden"></div>
         `;
-        document.getElementById('logoutBtn').onclick = () => { currentCouple = null; currentPerson = null; renderUI(); };
+        document.getElementById('logoutBtn').onclick = async () => {
+            try { await auth.signOut(); } catch(e) {}
+            localStorage.removeItem('cinepareja_couple');
+            currentCouple = null; currentPerson = null; renderUI();
+        };
         document.getElementById('switchUserBtn').onclick = () => { currentPerson = null; renderUI(); };
+        document.getElementById('changePasswordBtn').onclick = () => showChangePasswordModal();
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -2506,7 +2644,61 @@
         };
     }
 
+
+    // ==================== CAMBIAR CONTRASEÑA ====================
+    function showChangePasswordModal() {
+        const modalDiv = document.getElementById('modal');
+        if (!modalDiv) return;
+        modalDiv.innerHTML = `
+            <div class="modal-content" style="max-width:420px;">
+                <h3 style="margin-bottom:1rem; color:#06B6D4;">🔑 Cambiar contraseña</h3>
+                <p style="font-size:0.75rem; color:#94A3B8; margin-bottom:1rem;">La nueva contraseña se usará la próxima vez que inicies sesión.</p>
+                <input type="password" id="currentPwd" placeholder="Contraseña actual">
+                <input type="password" id="newPwd" placeholder="Nueva contraseña (mínimo 6 caracteres)">
+                <input type="password" id="newPwd2" placeholder="Confirmar nueva contraseña">
+                <div id="changePwdError" style="color:#F87171; font-size:0.72rem; margin-bottom:0.5rem; display:none;"></div>
+                <div class="flex-buttons">
+                    <button id="confirmChangePwd" class="primary">Cambiar contraseña</button>
+                    <button id="closeChangePwd" class="outline">Cancelar</button>
+                </div>
+            </div>
+        `;
+        modalDiv.classList.remove('hidden');
+        document.getElementById('closeChangePwd').onclick = () => modalDiv.classList.add('hidden');
+        document.getElementById('confirmChangePwd').onclick = async () => {
+            const currentPwd = document.getElementById('currentPwd').value;
+            const newPwd     = document.getElementById('newPwd').value;
+            const newPwd2    = document.getElementById('newPwd2').value;
+            const errEl      = document.getElementById('changePwdError');
+            errEl.style.display = 'none';
+            if (!currentPwd || !newPwd || !newPwd2) { errEl.textContent = 'Completa todos los campos.'; errEl.style.display='block'; return; }
+            if (newPwd !== newPwd2) { errEl.textContent = 'Las contraseñas nuevas no coinciden.'; errEl.style.display='block'; return; }
+            if (newPwd.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display='block'; return; }
+            try {
+                const user = auth.currentUser;
+                if (!user) { errEl.textContent = 'Sesión expirada. Vuelve a iniciar sesión.'; errEl.style.display='block'; return; }
+                // Re-autenticar con contraseña actual
+                const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPwd);
+                await user.reauthenticateWithCredential(credential);
+                // Cambiar contraseña
+                await user.updatePassword(newPwd);
+                modalDiv.classList.add('hidden');
+                alert('✅ Contraseña cambiada exitosamente.');
+            } catch(e) {
+                let msg = 'Error al cambiar la contraseña.';
+                if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'La contraseña actual es incorrecta.';
+                if (e.code === 'auth/weak-password') msg = 'La nueva contraseña es muy débil.';
+                if (e.code === 'auth/requires-recent-login') msg = 'Por seguridad, vuelve a iniciar sesión antes de cambiar la contraseña.';
+                errEl.textContent = msg; errEl.style.display = 'block';
+            }
+        };
+    }
+
     function renderUI() {
+        if (!currentCouple) {
+            const saved = localStorage.getItem('cinepareja_couple');
+            if (saved) { try { currentCouple = JSON.parse(saved); } catch(e) { localStorage.removeItem('cinepareja_couple'); } }
+        }
         if (!currentCouple) renderAuthScreen();
         else if (!currentPerson) renderProfileSelection();
         else renderMainApp();
