@@ -230,6 +230,22 @@
 
         /* ── RESPONSIVE ── */
         @media (max-width:1100px) { .charts-grid-dashboard { grid-template-columns:repeat(2,1fr); } }
+
+        /* ── TOAST NOTIFICATIONS ── */
+        #toast-container { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; align-items:center; gap:0.5rem; pointer-events:none; width:90%; max-width:380px; }
+        .toast { display:flex; align-items:center; gap:0.7rem; padding:0.75rem 1.1rem; border-radius:1rem; font-size:0.82rem; font-weight:600; color:#F8FAFC; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); box-shadow:0 4px 24px rgba(0,0,0,0.5); pointer-events:auto; animation:toastIn 0.3s ease; width:100%; box-sizing:border-box; }
+        @keyframes toastIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(12px); } }
+        .toast.success { background:linear-gradient(135deg,rgba(16,185,129,0.92),rgba(5,150,105,0.88)); border:1px solid rgba(16,185,129,0.4); }
+        .toast.error   { background:linear-gradient(135deg,rgba(239,68,68,0.92),rgba(185,28,28,0.88));   border:1px solid rgba(239,68,68,0.4); }
+        .toast.info    { background:linear-gradient(135deg,rgba(6,182,212,0.92),rgba(8,145,178,0.88));   border:1px solid rgba(6,182,212,0.4); }
+        .toast.warning { background:linear-gradient(135deg,rgba(245,158,11,0.92),rgba(180,83,9,0.88));   border:1px solid rgba(245,158,11,0.4); }
+        /* ── CONFIRM MODAL ── */
+        #confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:8000; display:flex; align-items:center; justify-content:center; }
+        .confirm-box { background:linear-gradient(165deg,rgba(10,15,36,0.98),rgba(16,24,56,0.96)); border:1px solid rgba(109,40,217,0.35); border-radius:1.3rem; padding:1.5rem; max-width:320px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,0.6); text-align:center; }
+        .confirm-box h4 { color:#F1F5F9; font-size:0.95rem; margin-bottom:0.5rem; }
+        .confirm-box p  { color:#94A3B8; font-size:0.78rem; margin-bottom:1.2rem; line-height:1.5; }
+        .confirm-btns { display:flex; gap:0.6rem; justify-content:center; }
         @media (max-width:900px) {
             .charts-grid-dashboard { grid-template-columns:1fr; }
             .two-columns { grid-template-columns:1fr; }
@@ -243,6 +259,32 @@
     </style>
 </head>
 <body>
+
+<div id="toast-container"></div>
+<script>
+function showToast(msg, type='info', duration=3000) {
+    const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.innerHTML = '<span style="font-size:1.1rem;flex-shrink:0;">' + icons[type] + '</span><span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'toastOut 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cancelar', danger=true) {
+    const overlay = document.createElement('div');
+    overlay.id = 'confirm-overlay';
+    overlay.innerHTML = '<div class="confirm-box"><h4>' + (danger ? '⚠️ ' : '') + 'Confirmar acción</h4><p>' + msg + '</p><div class="confirm-btns"><button id="cfm-ok" style="flex:1;padding:0.5rem;border-radius:0.7rem;border:none;background:' + (danger ? 'linear-gradient(115deg,#EF4444,#B91C1C)' : 'linear-gradient(115deg,#6D28D9,#8B5CF6)') + ';color:#fff;font-weight:700;font-size:0.8rem;cursor:pointer;">' + confirmLabel + '</button><button id="cfm-cancel" style="flex:1;padding:0.5rem;border-radius:0.7rem;border:1px solid rgba(45,58,94,0.8);background:transparent;color:#94A3B8;font-weight:600;font-size:0.8rem;cursor:pointer;">' + cancelLabel + '</button></div></div>';
+    document.body.appendChild(overlay);
+    document.getElementById('cfm-ok').onclick = () => { overlay.remove(); onConfirm(); };
+    document.getElementById('cfm-cancel').onclick = () => overlay.remove();
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+}
+</script>
+
 <div id="appRoot" class="app-container"></div>
 
 <script>
@@ -950,10 +992,10 @@
         else { randomCounter++; lastRandomTime = now; }
     }
     async function showRandomRecommendation() {
-        if (!TMDB_API_KEY || TMDB_API_KEY === "TU_API_KEY_DE_TMDB") { alert("API Key de TMDB no configurada."); return; }
-        if (!canRequestRandom()) { alert("Has alcanzado el límite de 5 recomendaciones aleatorias en 10 minutos. Intenta más tarde."); return; }
+        if (!TMDB_API_KEY || TMDB_API_KEY === "TU_API_KEY_DE_TMDB") { showToast("API Key de TMDB no configurada.", "error"); return; }
+        if (!canRequestRandom()) { showToast("Límite alcanzado. Intenta en 10 minutos.", "warning"); return; }
         const movie = await fetchRandomHighRatedMovie();
-        if (!movie) { alert("No se encontró ninguna película aleatoria disponible."); return; }
+        if (!movie) { showToast("No se encontró película disponible.", "warning"); return; }
         recordRandomRequest();
         const modalDiv = document.getElementById('modal');
         const genresTags = movie.genres && movie.genres.length
@@ -984,7 +1026,7 @@
         document.getElementById('closeRandomModal').onclick = () => modalDiv.classList.add('hidden');
         document.getElementById('addRandomToWishlist').onclick = async () => {
             await db.collection("wishlist").add({ coupleCode: currentCouple.code, title: movie.title, year: movie.year, posterUrl: movie.posterUrl, type: 'pelicula', addedAt: new Date() });
-            alert("Agregado a wishlist");
+            showToast("Agregado a wishlist ✨", "success");
             modalDiv.classList.add('hidden');
         };
         document.getElementById('nextRandomBtn').onclick = async () => {
@@ -1569,7 +1611,7 @@
             btn.style.boxShadow = `0 0 12px ${col}18`;
             btn.onmouseover = () => { btn.style.borderColor = `${col}70`; btn.style.boxShadow = `0 0 20px ${col}40`; };
             btn.onmouseout = () => { btn.style.borderColor = `${col}30`; btn.style.boxShadow = `0 0 12px ${col}18`; };
-            btn.onclick = () => { alert(`${type}: ${count} sesiones (${percent}%)`); };
+            btn.onclick = () => { showToast(`${type}: ${count} sesiones (${percent}%)`, "info"); };
             sessionSelector.appendChild(btn);
         }
 
@@ -1623,7 +1665,7 @@
             shareBtn.onclick = async (e) => {
                 e.stopPropagation();
                 if (navigator.share) await navigator.share({ title: shareBtn.dataset.title, text: `Puntuación de la pareja: ${shareBtn.dataset.rating}/10.`, url: window.location.href });
-                else alert("Compartir no soportado.");
+                else showToast("Compartir no soportado en este navegador.", "warning");
             };
             return card;
         }
@@ -1644,7 +1686,7 @@
             wishlistBtn.onclick = async (e) => {
                 e.stopPropagation();
                 await db.collection("wishlist").add({ coupleCode: currentCouple.code, title: wishlistBtn.dataset.title, year: wishlistBtn.dataset.year, posterUrl: wishlistBtn.dataset.poster, type: 'pelicula', addedAt: new Date() });
-                alert("Agregado a wishlist");
+                showToast("Agregado a wishlist ✨", "success");
             };
             return card;
         }
@@ -1926,13 +1968,13 @@
                 const cat = libraryFilterType;
                 if (pinnedCat[cat].has(id)) { pinnedCat[cat].delete(id); renderLibrary(); }
                 else if (pinnedCat[cat].size < 5) { pinnedCat[cat].add(id); renderLibrary(); }
-                else { alert('Máximo 5 anclados por categoría. Desancla uno primero.'); }
+                else { showToast('Máximo 5 anclados. Desancla uno primero.', 'warning'); }
             };
         });
         document.querySelectorAll('.edit-movie').forEach(btn => btn.onclick = e => { e.stopPropagation(); showEditModal(btn.dataset.id); });
         document.querySelectorAll('.delete-movie').forEach(btn => btn.onclick = async e => {
             e.stopPropagation();
-            if (confirm('¿Eliminar?')) { Object.values(pinnedByCategory).forEach(s=>s.delete(btn.dataset.id)); await db.collection('contents').doc(btn.dataset.id).delete(); }
+            showConfirm('¿Seguro que quieres eliminar este contenido?', async () => { Object.values(pinnedByCategory).forEach(s=>s.delete(btn.dataset.id)); await db.collection('contents').doc(btn.dataset.id).delete(); });
         });
         document.querySelectorAll('.toggle-incomplete').forEach(btn => btn.onclick = async e => {
             e.stopPropagation();
@@ -1943,9 +1985,9 @@
         document.querySelectorAll('.rating-value').forEach(el => {
             el.onclick = e => {
                 e.stopPropagation();
-                if (el.dataset.person !== currentPerson) { alert('Solo tu propia nota.'); return; }
+                if (el.dataset.person !== currentPerson) { showToast('Solo puedes editar tu propia nota.', 'warning'); return; }
                 const movie = contents.find(c => c.id === el.dataset.id);
-                if (movie.type !== 'pelicula' && !movie.seriesCompleted) { alert('Primero completa la serie/novela.'); return; }
+                if (movie.type !== 'pelicula' && !movie.seriesCompleted) { showToast('Primero completa la serie/novela.', 'warning'); return; }
                 showFullRatingModal(el.dataset.id, el.dataset.person);
             };
         });
@@ -1957,7 +1999,7 @@
                 const person  = badge.dataset.person;
                 const movie   = contents.find(c => c.id === movieId);
                 if (!movie || !person) return;
-                if (movie.type !== 'pelicula' && !movie.seriesCompleted) { alert('Primero completa la serie/novela para calificar.'); return; }
+                if (movie.type !== 'pelicula' && !movie.seriesCompleted) { showToast('Primero completa la serie/novela para calificar.', 'warning'); return; }
                 showFullRatingModal(movieId, person);
             };
         });
@@ -1982,16 +2024,16 @@
                 document.getElementById('saveEpisodeBtn').onclick = async () => {
                     const season=parseInt(document.getElementById('seasonNum').value), episode=parseInt(document.getElementById('episodeNum').value);
                     const isSF=document.getElementById('isSeasonFinal').value==='true', isSerF=document.getElementById('isSeriesFinal').value==='true';
-                    if (isNaN(season)||isNaN(episode)||episode<1) { alert('Inválido'); return; }
+                    if (isNaN(season)||isNaN(episode)||episode<1) { showToast('Número de episodio inválido.', 'error'); return; }
                     const tot=movie.totalEpisodes||0; let nw=(movie.watchedEpisodes||0)+1;
-                    if (nw>tot&&tot>0) { alert(`Supera total (${tot})`); modalDiv.classList.add('hidden'); return; }
+                    if (nw>tot&&tot>0) { showToast(`Supera el total de episodios (${tot}).`, 'warning'); modalDiv.classList.add('hidden'); return; }
                     const updates={watchedEpisodes:nw};
                     if (isSerF||(isSF&&nw>=tot)) {
                         updates.seriesCompleted=true; updates.viewDate=new Date().toISOString().slice(0,10);
                         await db.collection('contents').doc(id).update(updates);
                         modalDiv.classList.add('hidden');
                         if (currentPerson) showFullRatingModal(id,currentPerson);
-                    } else { await db.collection('contents').doc(id).update(updates); modalDiv.classList.add('hidden'); alert('Episodio registrado.'); }
+                    } else { await db.collection('contents').doc(id).update(updates); modalDiv.classList.add('hidden'); showToast('Episodio registrado.', 'success'); }
                 };
             };
         });
@@ -2150,7 +2192,7 @@
             const entertainment = parseInt(document.getElementById('entertainment').value);
             const comment = document.getElementById('commentValue').value;
             if (!watchedDate || isNaN(rating) || rating<1 || rating>10 || isNaN(entertainment) || entertainment<1 || entertainment>10) {
-                alert("Revisa los campos obligatorios.");
+                showToast("Revisa los campos obligatorios.", "error");
                 return;
             }
             const updates = {
@@ -2207,7 +2249,7 @@
                 durationMinutes: parseInt(document.getElementById('editDuration').value) || 0
             };
             if (updates.type === 'serie' || updates.type === 'novela') updates.totalEpisodes = parseInt(document.getElementById('editTotalEpisodes')?.value) || 0;
-            if (!updates.title) return alert("Título requerido");
+            if (!updates.title) { showToast("Título requerido.", "error"); return; };
             await db.collection("contents").doc(contentId).update(updates);
             modalDiv.classList.add('hidden');
         };
@@ -2260,7 +2302,7 @@
         });
         document.getElementById('searchTmdbBtn').onclick = async () => {
             const query = document.getElementById('searchTitle').value.trim();
-            if (!query) { alert("Escribe un título"); return; }
+            if (!query) { showToast("Escribe un título para buscar.", "warning"); return; }
             const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=es`;
             try {
                 const res = await fetch(url);
@@ -2319,12 +2361,12 @@
                     };
                     resultsDiv.appendChild(manualOption);
                 }
-            } catch(e) { alert("Error: "+e.message); document.getElementById('manualFields').classList.remove('hidden'); document.getElementById('saveContentBtn').disabled = false; }
+            } catch(e) { showToast("Error: " + e.message, "error"); document.getElementById('manualFields').classList.remove('hidden'); document.getElementById('saveContentBtn').disabled = false; }
         };
         document.getElementById('saveContentBtn').onclick = async () => {
             let title = document.getElementById('title')?.value.trim();
             if (!title) title = selectedData?.title;
-            if (!title) { alert("Título requerido"); return; }
+            if (!title) { showToast("Título requerido.", "error"); return; }
             const adder = document.getElementById('adderPerson').value;
             const type = document.getElementById('type').value;
             const newContent = {
@@ -2347,8 +2389,8 @@
                 const docRef = await db.collection("contents").add(newContent);
                 modalDiv.classList.add('hidden');
                 if (type === 'pelicula') showFullRatingModal(docRef.id, adder);
-                else alert("Serie/novela agregada. Registra episodios.");
-            } catch(e) { alert("Error: "+e.message); }
+                else showToast("Serie/novela agregada. Registra episodios.", "success");
+            } catch(e) { showToast("Error: " + e.message, "error"); }
         };
     }
 
@@ -2529,7 +2571,7 @@
                 const id = btn.dataset.id, cat = wishlistFilterType;
                 if (pinnedCat[cat].has(id)) { pinnedCat[cat].delete(id); renderWishlistTab(); }
                 else if (pinnedCat[cat].size < 5) { pinnedCat[cat].add(id); renderWishlistTab(); }
-                else { alert('Máximo 5 anclados por categoría.'); }
+                else { showToast('Máximo 5 anclados por categoría.', 'warning'); }
             };
         });
 
@@ -2556,7 +2598,7 @@
         document.querySelectorAll('.delete-wishlist').forEach(btn => {
             btn.onclick = async e => {
                 e.stopPropagation();
-                if (confirm('¿Quitar de la wishlist?')) { Object.values(pinnedWishByCategory).forEach(s=>s.delete(btn.dataset.id)); await db.collection('wishlist').doc(btn.dataset.id).delete(); }
+                showConfirm('¿Quitar este título de la wishlist?', async () => { Object.values(pinnedWishByCategory).forEach(s=>s.delete(btn.dataset.id)); await db.collection('wishlist').doc(btn.dataset.id).delete(); }, 'Quitar', 'Cancelar', false);
             };
         });
     }
@@ -2587,7 +2629,7 @@
         document.getElementById('closeModalBtn').onclick = () => modalDiv.classList.add('hidden');
         document.getElementById('searchTmdbBtn').onclick = async () => {
             const query = document.getElementById('searchTitle').value.trim();
-            if (!query) { alert("Escribe un título"); return; }
+            if (!query) { showToast("Escribe un título para buscar.", "warning"); return; }
             const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=es`;
             try {
                 const res = await fetch(url);
@@ -2627,12 +2669,12 @@
                         resultsDiv.appendChild(div);
                     }
                 }
-            } catch(e) { alert("Error: "+e.message); document.getElementById('manualFields').classList.remove('hidden'); document.getElementById('saveWishlistBtn').disabled = false; }
+            } catch(e) { showToast("Error: " + e.message, "error"); document.getElementById('manualFields').classList.remove('hidden'); document.getElementById('saveWishlistBtn').disabled = false; }
         };
         document.getElementById('saveWishlistBtn').onclick = async () => {
             let title = document.getElementById('title')?.value.trim();
             if (!title) title = selectedData?.title;
-            if (!title) { alert("Título requerido"); return; }
+            if (!title) { showToast("Título requerido.", "error"); return; }
             await db.collection("wishlist").add({
                 coupleCode: currentCouple.code, title, type: document.getElementById('type').value,
                 year: document.getElementById('year').value, genre: document.getElementById('genre').value,
@@ -2683,7 +2725,7 @@
                 // Cambiar contraseña
                 await user.updatePassword(newPwd);
                 modalDiv.classList.add('hidden');
-                alert('✅ Contraseña cambiada exitosamente.');
+                showToast('Contraseña cambiada exitosamente.', 'success');
             } catch(e) {
                 let msg = 'Error al cambiar la contraseña.';
                 if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'La contraseña actual es incorrecta.';
