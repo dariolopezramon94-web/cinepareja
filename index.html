@@ -600,6 +600,13 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
 
     // ==================== SISTEMA DE RECOMENDACIONES ====================
 
+
+    // ── Helper: obtiene array de géneros compatible con datos viejos y nuevos ──
+    function getGenres(c) {
+        if (Array.isArray(c.genres) && c.genres.length) return c.genres;
+        if (c.genre) return [c.genre];
+        return [];
+    }
     // Mapa de géneros en español → ID de TMDB
     const TMDB_GENRE_IDS = {
         'Acción': 28, 'Aventura': 12, 'Animación': 16, 'Comedia': 35,
@@ -621,16 +628,19 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         // 1. Puntuación por género: promedio de (rating + entertainment) de ambos
         const genreStats = new Map();
         rated.forEach(c => {
-            if (!c.genre) return;
+            const cGenres = getGenres(c);
+            if (!cGenres.length) return;
             const ratingAvg = (c.ratings.partner1 + c.ratings.partner2) / 2;
             const entAvg = ((c.entertainment?.partner1 || ratingAvg) + (c.entertainment?.partner2 || ratingAvg)) / 2;
             const rewatchBonus = (c.rewatch?.partner1 === 'Sí' ? 0.5 : 0) + (c.rewatch?.partner2 === 'Sí' ? 0.5 : 0);
             const likedBonus = (['Me encantó'].includes(c.likedScale?.partner1) ? 0.5 : 0) + (['Me encantó'].includes(c.likedScale?.partner2) ? 0.5 : 0);
             const combinedScore = (ratingAvg * 0.5) + (entAvg * 0.3) + (rewatchBonus * 0.5) + (likedBonus * 0.3);
-            if (!genreStats.has(c.genre)) genreStats.set(c.genre, { total: 0, count: 0 });
-            const g = genreStats.get(c.genre);
-            g.total += combinedScore;
-            g.count += 1;
+            cGenres.forEach(genre => {
+                if (!genreStats.has(genre)) genreStats.set(genre, { total: 0, count: 0 });
+                const g = genreStats.get(genre);
+                g.total += combinedScore;
+                g.count += 1;
+            });
         });
 
         // Géneros ordenados por score promedio
@@ -1070,10 +1080,14 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         let topRecomendation = bestMovie ? bestMovie.title : 'Ninguna';
         let genreScores = new Map();
         contents.forEach(c => {
-            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2 && c.genre) {
+            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
+                const cGenres = getGenres(c);
+                if (!cGenres.length) return;
                 let avg = (c.ratings.partner1 + c.ratings.partner2) / 2;
-                if (!genreScores.has(c.genre)) genreScores.set(c.genre, []);
-                genreScores.get(c.genre).push(avg);
+                cGenres.forEach(genre => {
+                    if (!genreScores.has(genre)) genreScores.set(genre, []);
+                    genreScores.get(genre).push(avg);
+                });
             }
         });
         let dominantGenre = '', maxGenreAvg = 0;
@@ -1094,13 +1108,16 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         // Radar
         const genreMap = { 'Terror':0, 'Romance':0, 'Drama':0, 'Acción':0, 'Suspenso':0, 'Comedia':0, 'Sci-fi':0 };
         contents.forEach(c => {
-            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2 && c.genre) {
+            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
+                const cGenres = getGenres(c);
+                if (!cGenres.length) return;
                 let avg = (c.ratings.partner1 + c.ratings.partner2) / 2;
-                let g = c.genre;
-                if (genreMap.hasOwnProperty(g)) genreMap[g] = (genreMap[g] + avg) / (genreMap[g] === 0 ? 1 : 2);
-                else if (g === 'Ciencia ficción') genreMap['Sci-fi'] = (genreMap['Sci-fi'] + avg) / (genreMap['Sci-fi'] === 0 ? 1 : 2);
-                else if (g === 'Suspenso') genreMap['Suspenso'] = (genreMap['Suspenso'] + avg) / (genreMap['Suspenso'] === 0 ? 1 : 2);
-                else if (g === 'Comedia') genreMap['Comedia'] = (genreMap['Comedia'] + avg) / (genreMap['Comedia'] === 0 ? 1 : 2);
+                cGenres.forEach(g => {
+                    if (genreMap.hasOwnProperty(g)) genreMap[g] = (genreMap[g] + avg) / (genreMap[g] === 0 ? 1 : 2);
+                    else if (g === 'Ciencia ficción') genreMap['Sci-fi'] = (genreMap['Sci-fi'] + avg) / (genreMap['Sci-fi'] === 0 ? 1 : 2);
+                    else if (g === 'Suspenso') genreMap['Suspenso'] = (genreMap['Suspenso'] + avg) / (genreMap['Suspenso'] === 0 ? 1 : 2);
+                    else if (g === 'Comedia') genreMap['Comedia'] = (genreMap['Comedia'] + avg) / (genreMap['Comedia'] === 0 ? 1 : 2);
+                });
             }
         });
         let radarData = Object.values(genreMap);
@@ -1139,12 +1156,13 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         // Battle chart
         let genreAvgP1 = new Map(), genreAvgP2 = new Map();
         contents.forEach(c => {
-            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2 && c.genre) {
-                let g = c.genre;
-                if (!genreAvgP1.has(g)) genreAvgP1.set(g, []);
-                if (!genreAvgP2.has(g)) genreAvgP2.set(g, []);
-                genreAvgP1.get(g).push(c.ratings.partner1);
-                genreAvgP2.get(g).push(c.ratings.partner2);
+            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
+                getGenres(c).forEach(g => {
+                    if (!genreAvgP1.has(g)) genreAvgP1.set(g, []);
+                    if (!genreAvgP2.has(g)) genreAvgP2.set(g, []);
+                    genreAvgP1.get(g).push(c.ratings.partner1);
+                    genreAvgP2.get(g).push(c.ratings.partner2);
+                });
             }
         });
         let battleGenres = Array.from(genreAvgP1.keys());
@@ -1153,7 +1171,11 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
 
         // Wheel of genres
         let genreCount = new Map();
-        contents.forEach(c => { if (c.type === 'pelicula' && c.genre) genreCount.set(c.genre, (genreCount.get(c.genre) || 0) + 1); });
+        contents.forEach(c => {
+            if (c.type === 'pelicula') {
+                getGenres(c).forEach(g => genreCount.set(g, (genreCount.get(g) || 0) + 1));
+            }
+        });
         let wheelLabels = Array.from(genreCount.keys());
         let wheelData = Array.from(genreCount.values());
 
@@ -2336,6 +2358,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     };
                             const genreIds = item.genre_ids || (details.genres ? details.genres.map(g=>g.id) : []);
                             const genreName = genreIds.length ? (genreMapTmdb[genreIds[0]] || details.genres?.[0]?.name || '') : '';
+                            const allGenreNames = genreIds.map(id => genreMapTmdb[id]).filter(Boolean);
                             selectedData = {
                                 title: item.title || item.name,
                                 year: (item.release_date || item.first_air_date || '').split('-')[0],
@@ -2345,7 +2368,8 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                                 duration: runtime || null,
                                 totalEpisodes: totalEpisodes,
                                 tmdbId: item.id,
-                                genre: genreName
+                                genre: genreName,
+                                allGenres: allGenreNames
                             };
                             document.getElementById('title').value = selectedData.title;
                             document.getElementById('year').value = selectedData.year;
@@ -2386,11 +2410,14 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             if (!title) { showToast("Título requerido.", "error"); return; }
             const adder = document.getElementById('adderPerson').value;
             const type = document.getElementById('type').value;
+            const genreVal = document.getElementById('genre').value || selectedData?.genre || '';
+            const genresVal = selectedData?.allGenres?.length ? selectedData.allGenres : (genreVal ? [genreVal] : []);
             const newContent = {
                 coupleCode: currentCouple.code, title, type,
                 viewDate: document.getElementById('viewDate').value,
                 year: document.getElementById('year').value,
-                genre: document.getElementById('genre').value,
+                genre: genreVal,
+                genres: genresVal,
                 posterUrl: document.getElementById('posterUrl').value,
                 tmdbRating: selectedData?.tmdbRating || null,
                 durationMinutes: parseInt(document.getElementById('duration').value) || 0,
@@ -2677,13 +2704,15 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     };
                             const genreIds2 = item.genre_ids || [];
                             const genreName2 = genreIds2.length ? (genreMapTmdb2[genreIds2[0]] || '') : '';
+                            const allGenreNames2 = genreIds2.map(id => genreMapTmdb2[id]).filter(Boolean);
                             selectedData = {
                                 title: item.title||item.name,
                                 year: (item.release_date||item.first_air_date||'').split('-')[0],
                                 posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '',
                                 type: item.media_type === 'tv' ? 'serie' : 'pelicula',
                                 duration: runtime || null,
-                                genre: genreName2
+                                genre: genreName2,
+                                allGenres: allGenreNames2
                             };
                             document.getElementById('title').value = selectedData.title;
                             document.getElementById('year').value = selectedData.year;
@@ -2711,7 +2740,9 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             if (!title) { showToast("Título requerido.", "error"); return; }
             await db.collection("wishlist").add({
                 coupleCode: currentCouple.code, title, type: document.getElementById('type').value,
-                year: document.getElementById('year').value, genre: document.getElementById('genre').value || selectedData?.genre || '',
+                year: document.getElementById('year').value,
+                genre: document.getElementById('genre').value || selectedData?.genre || '',
+                genres: selectedData?.allGenres?.length ? selectedData.allGenres : [(document.getElementById('genre').value || selectedData?.genre || '')].filter(Boolean),
                 posterUrl: document.getElementById('posterUrl').value,
                 durationMinutes: parseInt(document.getElementById('duration').value) || 0,
                 tmdbRating: selectedData?.tmdbRating || null, addedAt: new Date()
