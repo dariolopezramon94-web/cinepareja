@@ -2326,6 +2326,16 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                         div.className = 'search-result-item';
                         div.innerHTML = `<span>${item.title||item.name} ${item.release_date ? `(${item.release_date.split('-')[0]})` : ''} | ★ ${item.vote_average?.toFixed(1)||'-'}</span><button style="background:none; border:1px solid #06B6D4; border-radius:1rem;">Seleccionar</button>`;
                         div.onclick = () => {
+                            const genreMapTmdb = {
+                        28:'Acción', 12:'Aventura', 16:'Animación', 35:'Comedia',
+                        80:'Crimen', 99:'Documental', 18:'Drama', 14:'Fantasía',
+                        27:'Terror', 36:'Historia', 10402:'Música', 9648:'Misterio',
+                        10749:'Romance', 878:'Ciencia ficción', 53:'Suspenso',
+                        10752:'Bélica', 37:'Western', 10751:'Familia', 10759:'Acción y aventura',
+                        10762:'Niños', 10765:'Sci-fi y fantasía', 10766:'Telenovela'
+                    };
+                            const genreIds = item.genre_ids || (details.genres ? details.genres.map(g=>g.id) : []);
+                            const genreName = genreIds.length ? (genreMapTmdb[genreIds[0]] || details.genres?.[0]?.name || '') : '';
                             selectedData = {
                                 title: item.title || item.name,
                                 year: (item.release_date || item.first_air_date || '').split('-')[0],
@@ -2334,13 +2344,20 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                                 tmdbRating: item.vote_average || null,
                                 duration: runtime || null,
                                 totalEpisodes: totalEpisodes,
-                                tmdbId: item.id
+                                tmdbId: item.id,
+                                genre: genreName
                             };
                             document.getElementById('title').value = selectedData.title;
                             document.getElementById('year').value = selectedData.year;
                             document.getElementById('posterUrl').value = selectedData.posterUrl;
                             if (selectedData.type) document.getElementById('type').value = selectedData.type;
                             if (selectedData.duration) document.getElementById('duration').value = selectedData.duration;
+                            if (genreName) {
+                                const gs = document.getElementById('genre');
+                                let found = false;
+                                for (let opt of gs.options) { if (opt.value === genreName || opt.text === genreName) { gs.value = opt.value; found = true; break; } }
+                                if (!found) { const o = new Option(genreName, genreName, true, true); gs.add(o, 0); gs.value = genreName; }
+                            }
                             if (selectedData.type === 'serie' || selectedData.type === 'novela') {
                                 document.getElementById('seriesFields').classList.remove('hidden');
                                 if (selectedData.totalEpisodes) document.getElementById('totalEpisodes').value = selectedData.totalEpisodes;
@@ -2650,18 +2667,35 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                         div.className = 'search-result-item';
                         div.innerHTML = `<span>${item.title||item.name} ${item.release_date?`(${item.release_date.split('-')[0]})`:''}</span><button style="background:none; border:1px solid #06B6D4;">Seleccionar</button>`;
                         div.onclick = () => {
+                            const genreMapTmdb2 = {
+                        28:'Acción', 12:'Aventura', 16:'Animación', 35:'Comedia',
+                        80:'Crimen', 99:'Documental', 18:'Drama', 14:'Fantasía',
+                        27:'Terror', 36:'Historia', 10402:'Música', 9648:'Misterio',
+                        10749:'Romance', 878:'Ciencia ficción', 53:'Suspenso',
+                        10752:'Bélica', 37:'Western', 10751:'Familia', 10759:'Acción y aventura',
+                        10762:'Niños', 10765:'Sci-fi y fantasía', 10766:'Telenovela'
+                    };
+                            const genreIds2 = item.genre_ids || [];
+                            const genreName2 = genreIds2.length ? (genreMapTmdb2[genreIds2[0]] || '') : '';
                             selectedData = {
                                 title: item.title||item.name,
                                 year: (item.release_date||item.first_air_date||'').split('-')[0],
                                 posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '',
                                 type: item.media_type === 'tv' ? 'serie' : 'pelicula',
-                                duration: runtime || null
+                                duration: runtime || null,
+                                genre: genreName2
                             };
                             document.getElementById('title').value = selectedData.title;
                             document.getElementById('year').value = selectedData.year;
                             document.getElementById('posterUrl').value = selectedData.posterUrl;
                             if (selectedData.type) document.getElementById('type').value = selectedData.type;
                             if (selectedData.duration) document.getElementById('duration').value = selectedData.duration;
+                            if (genreName2) {
+                                const gs2 = document.getElementById('genre');
+                                let found2 = false;
+                                for (let opt of gs2.options) { if (opt.value === genreName2 || opt.text === genreName2) { gs2.value = opt.value; found2 = true; break; } }
+                                if (!found2) { const o2 = new Option(genreName2, genreName2, true, true); gs2.add(o2, 0); gs2.value = genreName2; }
+                            }
                             resultsDiv.classList.add('hidden');
                             document.getElementById('manualFields').classList.remove('hidden');
                             document.getElementById('saveWishlistBtn').disabled = false;
@@ -2677,7 +2711,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             if (!title) { showToast("Título requerido.", "error"); return; }
             await db.collection("wishlist").add({
                 coupleCode: currentCouple.code, title, type: document.getElementById('type').value,
-                year: document.getElementById('year').value, genre: document.getElementById('genre').value,
+                year: document.getElementById('year').value, genre: document.getElementById('genre').value || selectedData?.genre || '',
                 posterUrl: document.getElementById('posterUrl').value,
                 durationMinutes: parseInt(document.getElementById('duration').value) || 0,
                 tmdbRating: selectedData?.tmdbRating || null, addedAt: new Date()
