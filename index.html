@@ -80,10 +80,11 @@
 
         /* ── MOVIE CARD (carousel) ── */
         .card { background:rgba(12,18,42,0.95); border-radius:0.8rem; overflow:hidden; transition:all 0.25s;
-            border:1px solid rgba(30,41,70,0.9); cursor:pointer; max-width:180px; margin:0 auto; }
+            border:1px solid rgba(30,41,70,0.9); cursor:pointer;
+            width:160px; min-width:160px; max-width:160px; margin:0 auto; }
         .card:hover { transform:translateY(-4px); border-color:rgba(109,40,217,0.5); box-shadow:0 8px 24px rgba(109,40,217,0.2); }
-        .card-poster { width:100%; aspect-ratio:9/16; object-fit:cover; background:#0D1526; }
-        .card-info { padding:0.4rem; }
+        .card-poster { width:160px; height:240px; object-fit:cover; background:#0D1526; display:block; }
+        .card-info { padding:0.4rem; width:160px; box-sizing:border-box; }
         .card-title { font-size:0.63rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#E2E8F0; }
         .card-year { font-size:0.53rem; color:#334155; margin:0.08rem 0; }
         .card-rating { font-size:0.58rem; color:#F59E0B; font-weight:600; }
@@ -1115,27 +1116,35 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         let polarizingTitle = polarizingMovie ? polarizingMovie.title : 'Ninguna';
 
         // Radar — dinámico: toma todos los géneros reales de la biblioteca
-        const genreAccum = {}; // { genreName: { sum, count } }
         const GENRE_ALIASES = { 'Ciencia ficción': 'Sci-fi', 'Science Fiction': 'Sci-fi', 'Thriller': 'Suspenso' };
+        const genreAccum = {}; // { genreName: { sumAvg, sumDiff, count } }
         contents.forEach(c => {
             if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
                 const cGenres = getGenres(c);
                 if (!cGenres.length) return;
-                let avg = (c.ratings.partner1 + c.ratings.partner2) / 2;
+                const avg  = (c.ratings.partner1 + c.ratings.partner2) / 2;
+                const diff = Math.abs(c.ratings.partner1 - c.ratings.partner2);
                 cGenres.forEach(rawG => {
                     const g = GENRE_ALIASES[rawG] || rawG;
-                    if (!genreAccum[g]) genreAccum[g] = { sum: 0, count: 0 };
-                    genreAccum[g].sum += avg;
-                    genreAccum[g].count += 1;
+                    if (!genreAccum[g]) genreAccum[g] = { sumAvg: 0, sumDiff: 0, count: 0 };
+                    genreAccum[g].sumAvg  += avg;
+                    genreAccum[g].sumDiff += diff;
+                    genreAccum[g].count   += 1;
                 });
             }
         });
-        // Ordenar por promedio descendente para que el radar sea más legible
+        // Ordenar por promedio descendente
         const genreSorted = Object.entries(genreAccum)
-            .map(([label, { sum, count }]) => ({ label, avg: sum / count }))
+            .map(([label, { sumAvg, sumDiff, count }]) => ({
+                label,
+                avg: sumAvg / count,
+                // Coincidencia: 10 = perfecta coincidencia, 0 = máxima diferencia (diff max es 9)
+                coincidencia: parseFloat(Math.max(0, 10 - (sumDiff / count)).toFixed(2))
+            }))
             .sort((a, b) => b.avg - a.avg);
-        let radarLabels = genreSorted.map(g => g.label);
-        let radarData   = genreSorted.map(g => parseFloat(g.avg.toFixed(2)));
+        let radarLabels       = genreSorted.map(g => g.label);
+        let radarData         = genreSorted.map(g => parseFloat(g.avg.toFixed(2)));
+        let radarCoincidencia = genreSorted.map(g => g.coincidencia);
 
         // Heatmap
         let weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -1421,8 +1430,8 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     pointHoverRadius: 8,
                     pointHoverBackgroundColor: '#fff'
                 }, {
-                    label: 'Promedio',
-                    data: radarData.map(v => v * 0.7),
+                    label: 'Coincidencia',
+                    data: radarCoincidencia,
                     backgroundColor: 'rgba(139,92,246,0.08)',
                     borderColor: '#8B5CF6',
                     borderWidth: 1.5,
