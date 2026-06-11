@@ -1117,33 +1117,42 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
 
         // Radar — dinámico: toma todos los géneros reales de la biblioteca
         const GENRE_ALIASES = { 'Ciencia ficción': 'Sci-fi', 'Science Fiction': 'Sci-fi', 'Thriller': 'Suspenso' };
-        const genreAccum = {}; // { genreName: { sumAvg, sumDiff, count } }
+        const genreAccum = {}; // { genreName: { sumAfinidad, sumDiff, count } }
+        const LIKED_SCORE = { 'Me encantó': 10, 'Me gustó': 7.5, 'Regular': 5, 'No me gustó': 2.5, 'La odié': 0 };
         contents.forEach(c => {
             if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
                 const cGenres = getGenres(c);
                 if (!cGenres.length) return;
-                const avg  = (c.ratings.partner1 + c.ratings.partner2) / 2;
+                // Afinidad: 50% rating + 30% entertainment + 20% likedScale
+                const ratingAvg = (c.ratings.partner1 + c.ratings.partner2) / 2;
+                const ent1 = c.entertainment?.partner1 || ratingAvg;
+                const ent2 = c.entertainment?.partner2 || ratingAvg;
+                const entAvg = (ent1 + ent2) / 2;
+                const liked1 = LIKED_SCORE[c.likedScale?.partner1] ?? ratingAvg;
+                const liked2 = LIKED_SCORE[c.likedScale?.partner2] ?? ratingAvg;
+                const likedAvg = (liked1 + liked2) / 2;
+                const afinidad = (ratingAvg * 0.5) + (entAvg * 0.3) + (likedAvg * 0.2);
+                // Coincidencia: qué tan de acuerdo estuvieron (basado en rating)
                 const diff = Math.abs(c.ratings.partner1 - c.ratings.partner2);
                 cGenres.forEach(rawG => {
                     const g = GENRE_ALIASES[rawG] || rawG;
-                    if (!genreAccum[g]) genreAccum[g] = { sumAvg: 0, sumDiff: 0, count: 0 };
-                    genreAccum[g].sumAvg  += avg;
-                    genreAccum[g].sumDiff += diff;
-                    genreAccum[g].count   += 1;
+                    if (!genreAccum[g]) genreAccum[g] = { sumAfinidad: 0, sumDiff: 0, count: 0 };
+                    genreAccum[g].sumAfinidad += afinidad;
+                    genreAccum[g].sumDiff     += diff;
+                    genreAccum[g].count       += 1;
                 });
             }
         });
-        // Ordenar por promedio descendente
+        // Ordenar por afinidad descendente
         const genreSorted = Object.entries(genreAccum)
-            .map(([label, { sumAvg, sumDiff, count }]) => ({
+            .map(([label, { sumAfinidad, sumDiff, count }]) => ({
                 label,
-                avg: sumAvg / count,
-                // Coincidencia: 10 = perfecta coincidencia, 0 = máxima diferencia (diff max es 9)
+                afinidad:     parseFloat((sumAfinidad / count).toFixed(2)),
                 coincidencia: parseFloat(Math.max(0, 10 - (sumDiff / count)).toFixed(2))
             }))
-            .sort((a, b) => b.avg - a.avg);
+            .sort((a, b) => b.afinidad - a.afinidad);
         let radarLabels       = genreSorted.map(g => g.label);
-        let radarData         = genreSorted.map(g => parseFloat(g.avg.toFixed(2)));
+        let radarData         = genreSorted.map(g => g.afinidad);
         let radarCoincidencia = genreSorted.map(g => g.coincidencia);
 
         // Heatmap
@@ -1335,6 +1344,19 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     <h3>Radar de gustos</h3>
                     <div style="position:relative; width:100%; height:300px; display:flex; align-items:center; justify-content:center;">
                         <canvas id="radarChart"></canvas>
+                    </div>
+                    <div style="margin-top:0.8rem; width:100%; background:rgba(6,182,212,0.04); border:1px solid rgba(6,182,212,0.1); border-radius:0.7rem; padding:0.6rem 0.8rem;">
+                        <div style="font-size:0.6rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.4rem;">¿Cómo leer este gráfico?</div>
+                        <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                            <div style="display:flex; align-items:flex-start; gap:0.5rem; font-size:0.62rem; color:#64748B;">
+                                <span style="width:10px; height:10px; border-radius:50%; background:#06B6D4; flex-shrink:0; margin-top:2px;"></span>
+                                <span><strong style="color:#06B6D4;">Afinidad</strong> — qué tanto disfrutan ese género como pareja. Combina la nota (50%), el entretenimiento (30%) y el nivel de gusto (20%). Más lejos del centro = más les gusta.</span>
+                            </div>
+                            <div style="display:flex; align-items:flex-start; gap:0.5rem; font-size:0.62rem; color:#64748B;">
+                                <span style="width:10px; height:10px; border-radius:50%; background:#8B5CF6; flex-shrink:0; margin-top:2px;"></span>
+                                <span><strong style="color:#8B5CF6;">Coincidencia</strong> — qué tan de acuerdo están los dos al calificar ese género. Cerca del 10 = siempre coinciden. Cerca del 0 = opiniones muy distintas.</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
