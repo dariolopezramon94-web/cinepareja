@@ -64,15 +64,14 @@
         /* ── CAROUSEL ── */
         .carousel-wrapper { position:relative; overflow:visible; background:rgba(10,15,35,0.6);
             border-radius:1.1rem; padding:0.5rem 0; border:1px solid rgba(30,41,70,0.8);
-            margin-top:0.5rem; min-height:380px; display:flex; flex-direction:column; justify-content:center;
-            backdrop-filter:blur(8px); }
+            margin-top:0.5rem; min-height:380px; display:flex; flex-direction:column; justify-content:center; }
         .carousel-track-3 { display:flex; justify-content:center; overflow:visible; }
-        .carousel-slide-3 { flex:0 0 33.33%; position:relative; transition:all 0.3s ease; z-index:1; }
+        .carousel-slide-3 { flex:0 0 33.33%; position:relative; transition:opacity 0.25s ease, transform 0.25s ease; z-index:1; will-change:transform,opacity; }
         .carousel-slide-3:first-child { margin-right:-10%; z-index:1; }
         .carousel-slide-3:last-child  { margin-left:-10%; z-index:1; }
         .carousel-slide-3:nth-child(2) { z-index:3; }
-        .carousel-slide-3.blurred .card { filter:blur(3px); opacity:0.5; }
-        .carousel-slide-3:not(.blurred) .card { filter:none; opacity:1; transform:scale(1.03); box-shadow:0 12px 28px rgba(0,0,0,0.5); }
+        .carousel-slide-3.blurred .card { opacity:0.38; transform:scale(0.93); }
+        .carousel-slide-3:not(.blurred) .card { opacity:1; transform:scale(1.03); box-shadow:0 12px 28px rgba(0,0,0,0.5); }
         .carousel-controls { display:flex; justify-content:center; gap:0.5rem; margin-top:0.8rem; margin-bottom:0.5rem; }
         .carousel-controls button { background:rgba(15,20,45,0.8); border:1px solid rgba(45,58,94,0.7);
             border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
@@ -1183,8 +1182,9 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                 getGenres(c).forEach(g => genreCount.set(g, (genreCount.get(g) || 0) + 1));
             }
         });
-        let wheelLabels = Array.from(genreCount.keys());
-        let wheelData = Array.from(genreCount.values());
+        const wheelSorted = Array.from(genreCount.entries()).sort((a, b) => b[1] - a[1]);
+        let wheelLabels = wheelSorted.map(([label]) => label);
+        let wheelData   = wheelSorted.map(([, count]) => count);
 
         // Top emociones (burbujas)
         let emotionFreq = { "Alegría":0, "Emoción":0, "Tensión":0, "Tristeza":0, "Sorpresa":0, "Aburrimiento":0, "Indiferencia":0 };
@@ -1720,21 +1720,35 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             let currentIndex = 0, autoTimer = null;
             function renderSlides() {
                 const total = items.length;
-                const leftIndex = (currentIndex - 1 + total) % total;
+                const leftIndex  = (currentIndex - 1 + total) % total;
                 const rightIndex = (currentIndex + 1) % total;
-                const slides = [items[leftIndex], items[currentIndex], items[rightIndex]];
-                track.innerHTML = '';
-                slides.forEach((item, idx) => {
-                    const slideDiv = document.createElement('div');
-                    slideDiv.className = 'carousel-slide-3';
-                    if (idx !== 1) slideDiv.classList.add('blurred');
-                    slideDiv.appendChild(cardRenderer(item));
-                    track.appendChild(slideDiv);
-                });
+                const indices = [leftIndex, currentIndex, rightIndex];
+                const existingSlides = track.querySelectorAll('.carousel-slide-3');
+                if (existingSlides.length === 3) {
+                    existingSlides.forEach((slide, idx) => {
+                        if (idx === 1) slide.classList.remove('blurred');
+                        else slide.classList.add('blurred');
+                        if (slide.dataset.itemIndex !== String(indices[idx])) {
+                            slide.dataset.itemIndex = indices[idx];
+                            slide.innerHTML = '';
+                            slide.appendChild(cardRenderer(items[indices[idx]]));
+                        }
+                    });
+                } else {
+                    track.innerHTML = '';
+                    indices.forEach((itemIdx, idx) => {
+                        const slideDiv = document.createElement('div');
+                        slideDiv.className = 'carousel-slide-3';
+                        slideDiv.dataset.itemIndex = itemIdx;
+                        if (idx !== 1) slideDiv.classList.add('blurred');
+                        slideDiv.appendChild(cardRenderer(items[itemIdx]));
+                        track.appendChild(slideDiv);
+                    });
+                }
             }
             function goNext() { currentIndex = (currentIndex + 1) % items.length; renderSlides(); resetAuto(); }
             function goPrev() { currentIndex = (currentIndex - 1 + items.length) % items.length; renderSlides(); resetAuto(); }
-            function startAuto() { if (autoTimer) clearInterval(autoTimer); autoTimer = setInterval(goNext, autoInterval); }
+            function startAuto() { if (autoTimer) clearInterval(autoTimer); autoTimer = setInterval(goNext, 6000); }
             function resetAuto() { if (autoTimer) clearInterval(autoTimer); startAuto(); }
             const prevBtn = document.getElementById(prevBtnId), nextBtn = document.getElementById(nextBtnId);
             if (prevBtn) prevBtn.addEventListener('click', () => { goPrev(); resetAuto(); });
