@@ -248,12 +248,20 @@
         @media (max-width:900px) {
             .charts-grid-dashboard { grid-template-columns:1fr; }
             .two-columns { grid-template-columns:1fr; }
-            .carousel-wrapper { min-height:300px; }
+            .carousel-wrapper { min-height:300px; overflow:hidden; }
             .chart-container { height:160px; }
             .scorecard .value { font-size:1.3rem; }
             [style*="grid-template-columns: 2fr 1fr 1fr 1fr"],
             [style*="grid-template-columns: 1fr 2fr"],
             [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns:1fr !important; }
+            /* Carrusel en móvil: tarjeta central grande, laterales pequeñas sin desborde */
+            .carousel-track-3 { overflow:hidden; width:100%; }
+            .carousel-slide-3 { flex:0 0 30%; }
+            .carousel-slide-3:first-child { margin-right:-5%; }
+            .carousel-slide-3:last-child  { margin-left:-5%; }
+            .carousel-slide-3.blurred .card { opacity:0.25; transform:scale(0.85); }
+            .carousel-slide-3:not(.blurred) .card { transform:scale(1.0); }
+            .card { max-width:150px; }
         }
     </style>
 </head>
@@ -1176,10 +1184,17 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         let battleData2 = battleGenres.map(g => genreAvgP2.get(g).reduce((a,b)=>a+b,0) / genreAvgP2.get(g).length);
 
         // Wheel of genres
+        const WHEEL_ALIASES = {
+            'Sci-fi': 'Ciencia ficción', 'Science Fiction': 'Ciencia ficción',
+            'Thriller': 'Suspenso', 'Accion': 'Acción'
+        };
         let genreCount = new Map();
         contents.forEach(c => {
             if (c.type === 'pelicula') {
-                getGenres(c).forEach(g => genreCount.set(g, (genreCount.get(g) || 0) + 1));
+                getGenres(c).forEach(rawG => {
+                    const g = WHEEL_ALIASES[rawG] || rawG;
+                    genreCount.set(g, (genreCount.get(g) || 0) + 1);
+                });
             }
         });
         const wheelSorted = Array.from(genreCount.entries()).sort((a, b) => b[1] - a[1]);
@@ -1581,7 +1596,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             const PAGE_SIZE = 15;
             const movies = contents.filter(c =>
                 c.type === 'pelicula' && getGenres(c).some(g => {
-                    const ALIASES = { 'Ciencia ficción': 'Sci-fi', 'Science Fiction': 'Sci-fi', 'Thriller': 'Suspenso' };
+                    const ALIASES = { 'Sci-fi': 'Ciencia ficción', 'Science Fiction': 'Ciencia ficción', 'Thriller': 'Suspenso', 'Accion': 'Acción' };
                     return (ALIASES[g] || g) === genre;
                 })
             );
