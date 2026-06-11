@@ -1205,11 +1205,11 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                 let avgRating = (c.ratings.partner1 + c.ratings.partner2) / 2;
                 let diff = Math.abs(c.ratings.partner1 - c.ratings.partner2);
                 let type = '';
-                if (avgRating >= 8 && diff <= 1) type = '🍿 Relax';
+                if (avgRating >= 9 && diff <= 1) type = '✨ Perfecta';
+                else if (avgRating >= 8 && diff <= 1) type = '🍿 Relax';
                 else if (avgRating >= 7 && diff > 2) type = '🔥 Intensa';
                 else if (avgRating < 5 && diff > 3) type = '😂 Caótica';
                 else if (avgRating < 6) type = '💔 Decepcionante';
-                else if (avgRating >= 9) type = '✨ Perfecta';
                 else type = '🍿 Relax';
                 sessions.push({ date: c.viewDate, type });
             }
@@ -1567,9 +1567,77 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                             }
                         }
                     }
+                },
+                onClick: function(evt, elements) {
+                    if (!elements.length) return;
+                    const idx = elements[0].index;
+                    const genre = wheelLabels[idx];
+                    showGenreMoviesModal(genre);
                 }
             }
         });
+
+        function showGenreMoviesModal(genre) {
+            const PAGE_SIZE = 15;
+            const movies = contents.filter(c =>
+                c.type === 'pelicula' && getGenres(c).some(g => {
+                    const ALIASES = { 'Ciencia ficción': 'Sci-fi', 'Science Fiction': 'Sci-fi', 'Thriller': 'Suspenso' };
+                    return (ALIASES[g] || g) === genre;
+                })
+            );
+
+            const modalDiv = document.getElementById('modal');
+            if (!modalDiv) return;
+
+            let currentPage = 0;
+            const totalPages = Math.ceil(movies.length / PAGE_SIZE);
+
+            function renderPage() {
+                const start = currentPage * PAGE_SIZE;
+                const slice = movies.slice(start, start + PAGE_SIZE);
+                const listHTML = slice.map((m, i) =>
+                    `<div style="padding:0.42rem 0.6rem; border-bottom:1px solid rgba(20,30,60,0.7);
+                        font-size:0.78rem; color:#CBD5E1; display:flex; align-items:center; gap:0.5rem;">
+                        <span style="color:#334155; font-size:0.65rem; min-width:1.4rem;">${start + i + 1}.</span>
+                        <span>${m.title}</span>
+                    </div>`
+                ).join('');
+
+                const pagerHTML = totalPages > 1 ? `
+                    <div style="display:flex; align-items:center; justify-content:center; gap:0.8rem; margin-top:1rem;">
+                        <button id="wheelPrev" class="outline small" ${currentPage === 0 ? 'disabled style="opacity:0.35;cursor:default;"' : ''}>← Anterior</button>
+                        <span style="font-size:0.7rem; color:#475569;">${currentPage + 1} / ${totalPages}</span>
+                        <button id="wheelNext" class="outline small" ${currentPage >= totalPages - 1 ? 'disabled style="opacity:0.35;cursor:default;"' : ''}>Siguiente →</button>
+                    </div>` : '';
+
+                modalDiv.innerHTML = `
+                    <div class="modal-content" style="max-width:440px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3 style="color:#06B6D4; font-size:0.95rem;">🎬 ${genre}</h3>
+                            <span style="font-size:0.68rem; color:#475569;">${movies.length} película${movies.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div style="border-radius:0.6rem; overflow:hidden; border:1px solid rgba(20,30,60,0.8);">
+                            ${listHTML || '<div style="padding:1.5rem; color:#334155; text-align:center; font-size:0.78rem;">Sin películas en este género.</div>'}
+                        </div>
+                        ${pagerHTML}
+                        <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+                            <button id="closeGenreModal" class="outline">Cerrar</button>
+                        </div>
+                    </div>`;
+
+                modalDiv.classList.remove('hidden');
+
+                document.getElementById('closeGenreModal').onclick = () => modalDiv.classList.add('hidden');
+                modalDiv.onclick = (e) => { if (e.target === modalDiv) modalDiv.classList.add('hidden'); };
+
+                const prevBtn = document.getElementById('wheelPrev');
+                const nextBtn = document.getElementById('wheelNext');
+                if (prevBtn) prevBtn.onclick = () => { if (currentPage > 0) { currentPage--; renderPage(); } };
+                if (nextBtn) nextBtn.onclick = () => { if (currentPage < totalPages - 1) { currentPage++; renderPage(); } };
+            }
+
+            renderPage();
+        }
 
         // ── Top Emociones — Horizontal Ranked Bar Chart ──
         (function renderEmotionBars() {
