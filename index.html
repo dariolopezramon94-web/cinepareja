@@ -537,6 +537,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     <button id="switchUserBtn" class="outline small">Cambiar usuario</button>
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
+                <button id="migrateGenresBtn" class="outline" style="font-size:0.68rem;">🔄 Actualizar géneros</button>
                 <button id="changePasswordBtn" class="outline" style="font-size:0.68rem;">🔑 Cambiar contraseña</button>
                 <button id="logoutBtn" class="outline">Cerrar sesión</button>
             </div>
@@ -558,6 +559,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         };
         document.getElementById('switchUserBtn').onclick = () => { currentPerson = null; renderUI(); };
         document.getElementById('changePasswordBtn').onclick = () => showChangePasswordModal();
+        document.getElementById('migrateGenresBtn').onclick = () => showMigrateGenresModal();
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -2291,29 +2293,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     <select id="type"><option value="pelicula">Película</option><option value="serie">Serie</option><option value="novela">Novela</option></select>
                     <input type="date" id="viewDate" value="${new Date().toISOString().slice(0,10)}">
                     <input type="number" id="year" placeholder="Año">
-                    <select id="genre">
-                        <option value="Acción">Acción</option>
-                        <option value="Aventura">Aventura</option>
-                        <option value="Animación">Animación</option>
-                        <option value="Comedia">Comedia</option>
-                        <option value="Crimen">Crimen</option>
-                        <option value="Documental">Documental</option>
-                        <option value="Drama">Drama</option>
-                        <option value="Fantasía">Fantasía</option>
-                        <option value="Terror">Terror</option>
-                        <option value="Historia">Historia</option>
-                        <option value="Música">Música</option>
-                        <option value="Misterio">Misterio</option>
-                        <option value="Romance">Romance</option>
-                        <option value="Ciencia ficción">Ciencia ficción</option>
-                        <option value="Suspenso">Suspenso</option>
-                        <option value="Bélica">Bélica</option>
-                        <option value="Western">Western</option>
-                        <option value="Familia">Familia</option>
-                        <option value="Acción y aventura">Acción y aventura</option>
-                        <option value="Sci-fi y fantasía">Sci-fi y fantasía</option>
-                        <option value="Telenovela">Telenovela</option>
-                    </select>
+                    <input type="text" id="genre" placeholder="Géneros (ej: Acción, Drama, Thriller)" style="color:#E2E8F0;">
                     <div><label class="question-label">Póster (URL o subir)</label><input id="posterUrl" placeholder="URL"><label class="image-upload-label">Subir imagen</label><input type="file" id="posterFileUpload" accept="image/*" style="display:none;"></div>
                     <input type="number" id="duration" placeholder="Duración (minutos)">
                     <div id="seriesFields" class="hidden"><label class="question-label">Total episodios</label><input type="number" id="totalEpisodes" placeholder="Ej: 24"></div>
@@ -2399,19 +2379,14 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                             if (selectedData.type) document.getElementById('type').value = selectedData.type;
                             if (selectedData.duration) document.getElementById('duration').value = selectedData.duration;
                             const gs = document.getElementById('genre');
-                            if (genreName) {
-                                // Intentar seleccionar opción existente
-                                let found = false;
-                                for (let opt of gs.options) {
-                                    if (opt.value === genreName || opt.text === genreName) { gs.value = opt.value; found = true; break; }
-                                }
-                                // Si no existe en el select, agregar la opción
-                                if (!found) { const o = new Option(genreName, genreName, true, true); gs.add(o, 0); gs.value = genreName; }
+                            if (allGenreNames && allGenreNames.length) {
+                                // Llenar con todos los géneros separados por coma
+                                gs.value = allGenreNames.join(', ');
                                 gs.style.borderColor = 'rgba(6,182,212,0.6)';
                                 gs.style.background = 'rgba(6,182,212,0.08)';
                             } else {
-                                // API no trajo género — dejar libre, resetear estilo
-                                gs.value = gs.options[0]?.value || '';
+                                // API no trajo géneros — dejar libre para llenar manual
+                                gs.value = '';
                                 gs.style.borderColor = '';
                                 gs.style.background = '';
                             }
@@ -2443,8 +2418,9 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             if (!title) { showToast("Título requerido.", "error"); return; }
             const adder = document.getElementById('adderPerson').value;
             const type = document.getElementById('type').value;
-            const genreVal = document.getElementById('genre').value || selectedData?.genre || '';
-            const genresVal = selectedData?.allGenres?.length ? selectedData.allGenres : (genreVal ? [genreVal] : []);
+            const genreRaw = document.getElementById('genre').value || selectedData?.genre || '';
+            const genresVal = genreRaw ? genreRaw.split(',').map(g => g.trim()).filter(Boolean) : (selectedData?.allGenres || []);
+            const genreVal = genresVal[0] || '';
             const newContent = {
                 coupleCode: currentCouple.code, title, type,
                 viewDate: document.getElementById('viewDate').value,
@@ -2693,29 +2669,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     <input id="title" placeholder="Título *">
                     <select id="type"><option value="pelicula">Película</option><option value="serie">Serie</option><option value="novela">Novela</option></select>
                     <input type="number" id="year" placeholder="Año">
-                    <select id="genre">
-                        <option value="Acción">Acción</option>
-                        <option value="Aventura">Aventura</option>
-                        <option value="Animación">Animación</option>
-                        <option value="Comedia">Comedia</option>
-                        <option value="Crimen">Crimen</option>
-                        <option value="Documental">Documental</option>
-                        <option value="Drama">Drama</option>
-                        <option value="Fantasía">Fantasía</option>
-                        <option value="Terror">Terror</option>
-                        <option value="Historia">Historia</option>
-                        <option value="Música">Música</option>
-                        <option value="Misterio">Misterio</option>
-                        <option value="Romance">Romance</option>
-                        <option value="Ciencia ficción">Ciencia ficción</option>
-                        <option value="Suspenso">Suspenso</option>
-                        <option value="Bélica">Bélica</option>
-                        <option value="Western">Western</option>
-                        <option value="Familia">Familia</option>
-                        <option value="Acción y aventura">Acción y aventura</option>
-                        <option value="Sci-fi y fantasía">Sci-fi y fantasía</option>
-                        <option value="Telenovela">Telenovela</option>
-                    </select>
+                    <input type="text" id="genre" placeholder="Géneros (ej: Acción, Drama, Thriller)" style="color:#E2E8F0;">
                     <input id="posterUrl" placeholder="URL póster">
                     <input type="number" id="duration" placeholder="Duración (min)">
                 </div>
@@ -2775,16 +2729,12 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                             if (selectedData.type) document.getElementById('type').value = selectedData.type;
                             if (selectedData.duration) document.getElementById('duration').value = selectedData.duration;
                             const gs2 = document.getElementById('genre');
-                            if (genreName2) {
-                                let found2 = false;
-                                for (let opt of gs2.options) {
-                                    if (opt.value === genreName2 || opt.text === genreName2) { gs2.value = opt.value; found2 = true; break; }
-                                }
-                                if (!found2) { const o2 = new Option(genreName2, genreName2, true, true); gs2.add(o2, 0); gs2.value = genreName2; }
+                            if (allGenreNames2 && allGenreNames2.length) {
+                                gs2.value = allGenreNames2.join(', ');
                                 gs2.style.borderColor = 'rgba(6,182,212,0.6)';
                                 gs2.style.background = 'rgba(6,182,212,0.08)';
                             } else {
-                                gs2.value = gs2.options[0]?.value || '';
+                                gs2.value = '';
                                 gs2.style.borderColor = '';
                                 gs2.style.background = '';
                             }
@@ -2804,8 +2754,8 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             await db.collection("wishlist").add({
                 coupleCode: currentCouple.code, title, type: document.getElementById('type').value,
                 year: document.getElementById('year').value,
-                genre: document.getElementById('genre').value || selectedData?.genre || '',
-                genres: selectedData?.allGenres?.length ? selectedData.allGenres : [(document.getElementById('genre').value || selectedData?.genre || '')].filter(Boolean),
+                genre: (() => { const r = document.getElementById('genre').value || selectedData?.genre || ''; return r.split(',')[0].trim(); })(),
+                genres: (() => { const r = document.getElementById('genre').value || selectedData?.genre || ''; return r ? r.split(',').map(g=>g.trim()).filter(Boolean) : (selectedData?.allGenres||[]); })(),
                 posterUrl: document.getElementById('posterUrl').value,
                 durationMinutes: parseInt(document.getElementById('duration').value) || 0,
                 tmdbRating: selectedData?.tmdbRating || null, addedAt: new Date()
@@ -2814,6 +2764,118 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         };
     }
 
+
+
+    // ==================== MIGRACIÓN DE GÉNEROS ====================
+    async function showMigrateGenresModal() {
+        const modalDiv = document.getElementById('modal');
+        if (!modalDiv) return;
+
+        const GENRE_MAP = {
+            28:'Acción', 12:'Aventura', 16:'Animación', 35:'Comedia',
+            80:'Crimen', 99:'Documental', 18:'Drama', 14:'Fantasía',
+            27:'Terror', 36:'Historia', 10402:'Música', 9648:'Misterio',
+            10749:'Romance', 878:'Ciencia ficción', 53:'Suspenso',
+            10752:'Bélica', 37:'Western', 10751:'Familia',
+            10759:'Acción y aventura', 10765:'Sci-fi y fantasía', 10766:'Telenovela'
+        };
+
+        modalDiv.innerHTML = `
+            <div class="modal-content" style="max-width:460px;">
+                <h3 style="margin-bottom:0.5rem; color:#06B6D4;">🔄 Actualizar géneros</h3>
+                <p style="font-size:0.75rem; color:#94A3B8; margin-bottom:1rem; line-height:1.5;">
+                    Esto consultará TMDB para cada película que tenga ID registrado y actualizará sus géneros automáticamente.<br><br>
+                    <span style="color:#F59E0B;">⚠️ Las películas ingresadas manualmente sin ID de TMDB no serán afectadas.</span>
+                </p>
+                <div id="migrateProgress" style="display:none;">
+                    <div style="background:rgba(20,30,60,0.7); border-radius:0.5rem; overflow:hidden; margin-bottom:0.5rem; height:8px;">
+                        <div id="migrateBar" style="height:100%; width:0%; background:linear-gradient(90deg,#6D28D9,#06B6D4); border-radius:0.5rem; transition:width 0.3s;"></div>
+                    </div>
+                    <div id="migrateStatus" style="font-size:0.72rem; color:#94A3B8; text-align:center; margin-bottom:0.5rem;"></div>
+                    <div id="migrateLog" style="max-height:200px; overflow-y:auto; background:rgba(8,12,30,0.8); border-radius:0.5rem; padding:0.5rem; font-size:0.65rem; color:#475569; line-height:1.8;"></div>
+                </div>
+                <div id="migrateSummary" style="display:none; margin-top:0.8rem; padding:0.8rem; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:0.8rem; text-align:center;">
+                    <div id="migrateSummaryText" style="font-size:0.8rem; color:#6EE7B7; font-weight:700;"></div>
+                </div>
+                <div class="flex-buttons" style="margin-top:1rem;">
+                    <button id="startMigrateBtn" class="primary">Iniciar actualización</button>
+                    <button id="closeMigrateBtn" class="outline">Cerrar</button>
+                </div>
+            </div>
+        `;
+        modalDiv.classList.remove('hidden');
+        document.getElementById('closeMigrateBtn').onclick = () => modalDiv.classList.add('hidden');
+
+        document.getElementById('startMigrateBtn').onclick = async () => {
+            const startBtn = document.getElementById('startMigrateBtn');
+            startBtn.disabled = true;
+            startBtn.textContent = 'Actualizando...';
+
+            const progressDiv  = document.getElementById('migrateProgress');
+            const bar          = document.getElementById('migrateBar');
+            const statusEl     = document.getElementById('migrateStatus');
+            const logEl        = document.getElementById('migrateLog');
+            const summaryDiv   = document.getElementById('migrateSummary');
+            const summaryText  = document.getElementById('migrateSummaryText');
+            progressDiv.style.display = 'block';
+
+            // Obtener películas con tmdbId
+            const toMigrate = contents.filter(c => c.tmdbId && (!Array.isArray(c.genres) || c.genres.length === 0));
+            const total     = toMigrate.length;
+
+            if (total === 0) {
+                statusEl.textContent = 'Todas las películas ya están actualizadas ✅';
+                statusEl.style.color = '#6EE7B7';
+                startBtn.textContent = 'Listo';
+                return;
+            }
+
+            let updated = 0, skipped = 0, failed = 0;
+
+            for (let i = 0; i < toMigrate.length; i++) {
+                const movie = toMigrate[i];
+                const pct   = Math.round(((i + 1) / total) * 100);
+                bar.style.width = pct + '%';
+                statusEl.textContent = `Procesando ${i + 1} de ${total}: ${movie.title}`;
+
+                try {
+                    const mediaType = (movie.type === 'serie' || movie.type === 'novela') ? 'tv' : 'movie';
+                    const res  = await fetch(`https://api.themoviedb.org/3/${mediaType}/${movie.tmdbId}?api_key=${TMDB_API_KEY}&language=es`);
+                    const data = await res.json();
+
+                    if (data.genres && data.genres.length) {
+                        const genresArr  = data.genres.map(g => GENRE_MAP[g.id] || g.name).filter(Boolean);
+                        const genrePrimary = genresArr[0] || movie.genre || '';
+                        await db.collection('contents').doc(movie.id).update({
+                            genre: genrePrimary,
+                            genres: genresArr
+                        });
+                        logEl.innerHTML += `<div style="color:#6EE7B7;">✅ ${movie.title} → ${genresArr.join(', ')}</div>`;
+                        updated++;
+                    } else {
+                        logEl.innerHTML += `<div style="color:#475569;">⏭️ ${movie.title} → sin géneros en TMDB</div>`;
+                        skipped++;
+                    }
+                    logEl.scrollTop = logEl.scrollHeight;
+                } catch(e) {
+                    logEl.innerHTML += `<div style="color:#F87171;">❌ ${movie.title} → error</div>`;
+                    failed++;
+                }
+
+                // Delay 200ms para no saturar API
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            // Resumen final
+            bar.style.width = '100%';
+            statusEl.textContent = '¡Actualización completa!';
+            statusEl.style.color = '#6EE7B7';
+            summaryDiv.style.display = 'block';
+            summaryText.innerHTML = `✅ ${updated} actualizadas &nbsp;·&nbsp; ⏭️ ${skipped} sin cambios &nbsp;·&nbsp; ❌ ${failed} errores`;
+            startBtn.textContent = 'Completado';
+            showToast(`${updated} películas actualizadas con nuevos géneros.`, 'success', 5000);
+        };
+    }
 
     // ==================== CAMBIAR CONTRASEÑA ====================
     function showChangePasswordModal() {
