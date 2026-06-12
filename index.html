@@ -252,7 +252,6 @@
             .carousel-wrapper { min-height:300px; overflow:hidden; }
             .chart-container { height:160px; }
             .scorecard .value { font-size:1.3rem; }
-            [style*="grid-template-columns: 2fr 1fr 1fr 1fr"],
             [style*="grid-template-columns: 1fr 2fr"],
             [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns:1fr !important; }
             /* Carrusel en móvil: tarjeta central grande, laterales pequeñas sin desborde */
@@ -262,7 +261,8 @@
             .carousel-slide-3:last-child  { margin-left:-5%; }
             .carousel-slide-3.blurred .card { opacity:0.25; transform:scale(0.85); }
             .carousel-slide-3:not(.blurred) .card { transform:scale(1.0); }
-            .card { max-width:150px; }
+            /* Solo limitar card dentro del carrusel */
+            .carousel-slide-3 .card { max-width:150px; }
         }
     </style>
 </head>
