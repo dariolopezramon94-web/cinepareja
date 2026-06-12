@@ -12,10 +12,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
-        body { background: #060C1A; color: #F8FAFC; padding: 1.2rem; min-height: 100vh;
+        body { background: #060C1A; color: #F8FAFC; padding: 1.2rem; min-height: 100vh; overflow-x: hidden;
             background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(109,40,217,0.12), transparent),
                               radial-gradient(ellipse 60% 40% at 90% 80%, rgba(6,182,212,0.06), transparent); }
-        .app-container { max-width: 1440px; margin: 0 auto; }
+        .app-container { max-width: 1440px; margin: 0 auto; overflow-x: hidden; }
         .dashboard-content { width: 100%; box-sizing: border-box; }
         .dashboard-content > * { width: 100%; box-sizing: border-box; }
 
@@ -83,7 +83,7 @@
         /* ── MOVIE CARD (carousel) ── */
         .card { background:rgba(12,18,42,0.95); border-radius:0.8rem; overflow:hidden; transition:all 0.25s;
             border:1px solid rgba(30,41,70,0.9); cursor:pointer;
-            width:160px; min-width:160px; max-width:160px; margin:0 auto; }
+            width:160px; min-width:0; max-width:160px; margin:0 auto; }
         .card:hover { transform:translateY(-4px); border-color:rgba(109,40,217,0.5); box-shadow:0 8px 24px rgba(109,40,217,0.2); }
         .card-poster { width:160px; height:240px; object-fit:cover; background:#0D1526; display:block; }
         .card-info { padding:0.4rem; width:160px; box-sizing:border-box; }
@@ -267,6 +267,8 @@
             .dashboard-row-2col { grid-template-columns: 1fr !important; }
             /* Fila 3: Battle y Emociones apilados */
             .dashboard-row-2equal { grid-template-columns: 1fr !important; }
+            /* Columnas internas en filas apiladas */
+            .dashboard-row-2equal > .column { width:100%; box-sizing:border-box; min-width:0; }
             /* Carrusel en móvil */
             .carousel-track-3 { overflow:hidden; width:100%; }
             .carousel-slide-3 { flex:0 0 30%; }
@@ -274,7 +276,12 @@
             .carousel-slide-3:last-child  { margin-left:-5%; }
             .carousel-slide-3.blurred .card { opacity:0.25; transform:scale(0.85); }
             .carousel-slide-3:not(.blurred) .card { transform:scale(1.0); }
-            .carousel-slide-3 .card { max-width:150px; }
+            /* Cards del carrusel: ancho fluido en móvil */
+            .carousel-slide-3 .card { width:auto; min-width:0; max-width:120px; }
+            .carousel-slide-3 .card-poster { width:100%; max-width:120px; height:180px; }
+            .carousel-slide-3 .card-info { width:100%; max-width:120px; box-sizing:border-box; }
+            /* Fila final Recomendaciones + Top 3: cada bloque ocupa todo el ancho */
+            #recCarouselWrapper, #topCarouselWrapper { overflow:hidden; width:100%; box-sizing:border-box; }
         }
     </style>
 </head>
@@ -1414,8 +1421,8 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             </div>
 
             <!-- FILA FINAL: Recomendaciones | Top 3 -->
-            <div class="dashboard-row-2equal" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; box-sizing:border-box;">
-                <div class="column">
+            <div class="dashboard-row-2equal" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; box-sizing:border-box; overflow:hidden; width:100%;">
+                <div class="column" style="min-width:0; overflow:hidden;">
                     <div class="chart-card-dashboard" style="padding:0; overflow:hidden; max-width:100%;">
                         <div style="display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem 0.6rem;">
                             <h3 style="margin:0; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; background:linear-gradient(90deg,#06B6D4,#8B5CF6); -webkit-background-clip:text; background-clip:text; color:transparent;">Recomendaciones para ti</h3>
@@ -1427,7 +1434,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                         </div>
                     </div>
                 </div>
-                <div class="column">
+                <div class="column" style="min-width:0; overflow:hidden;">
                     <div class="chart-card-dashboard" style="padding:0; overflow:hidden; max-width:100%;">
                         <div style="padding:0.8rem 1rem 0.6rem;">
                             <h3 style="margin:0; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; background:linear-gradient(90deg,#F59E0B,#EC4899); -webkit-background-clip:text; background-clip:text; color:transparent;">Top 3 mejor valoradas</h3>
