@@ -64,7 +64,7 @@
             background:linear-gradient(90deg,#06B6D4,#8B5CF6); -webkit-background-clip:text; background-clip:text; color:transparent; }
 
         /* ── CAROUSEL ── */
-        .carousel-wrapper { position:relative; overflow:visible; background:rgba(10,15,35,0.6);
+        .carousel-wrapper { position:relative; overflow:hidden; background:rgba(10,15,35,0.6);
             border-radius:1.1rem; padding:0.5rem 0; border:1px solid rgba(30,41,70,0.8);
             margin-top:0.5rem; min-height:380px; display:flex; flex-direction:column; justify-content:center; }
         .carousel-track-3 { display:flex; justify-content:center; overflow:visible; }
@@ -1414,9 +1414,9 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             </div>
 
             <!-- FILA FINAL: Recomendaciones | Top 3 -->
-            <div class="dashboard-row-2equal" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; max-width:100%; box-sizing:border-box;">
+            <div class="dashboard-row-2equal" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; box-sizing:border-box;">
                 <div class="column">
-                    <div class="chart-card-dashboard" style="padding:0; overflow:hidden;">
+                    <div class="chart-card-dashboard" style="padding:0; overflow:hidden; max-width:100%;">
                         <div style="display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem 0.6rem;">
                             <h3 style="margin:0; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; background:linear-gradient(90deg,#06B6D4,#8B5CF6); -webkit-background-clip:text; background-clip:text; color:transparent;">Recomendaciones para ti</h3>
                             <button id="randomRecBtn" style="font-size:0.62rem; font-weight:600; padding:0.22rem 0.8rem; border-radius:2rem; background:linear-gradient(115deg,rgba(6,182,212,0.15),rgba(109,40,217,0.15)); border:1px solid rgba(6,182,212,0.3); color:#06B6D4; cursor:pointer; transition:all 0.2s; white-space:nowrap; letter-spacing:0.02em;">Película al azar</button>
@@ -1428,7 +1428,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     </div>
                 </div>
                 <div class="column">
-                    <div class="chart-card-dashboard" style="padding:0; overflow:hidden;">
+                    <div class="chart-card-dashboard" style="padding:0; overflow:hidden; max-width:100%;">
                         <div style="padding:0.8rem 1rem 0.6rem;">
                             <h3 style="margin:0; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; background:linear-gradient(90deg,#F59E0B,#EC4899); -webkit-background-clip:text; background-clip:text; color:transparent;">Top 3 mejor valoradas</h3>
                         </div>
