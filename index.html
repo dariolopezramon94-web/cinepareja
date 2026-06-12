@@ -16,6 +16,8 @@
             background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(109,40,217,0.12), transparent),
                               radial-gradient(ellipse 60% 40% at 90% 80%, rgba(6,182,212,0.06), transparent); }
         .app-container { max-width: 1440px; margin: 0 auto; }
+        .dashboard-content { width: 100%; box-sizing: border-box; }
+        .dashboard-content > * { width: 100%; box-sizing: border-box; }
 
         /* ── TOP BAR ── */
         .top-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;
@@ -1279,6 +1281,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         const top3 = moviesWithAvg.slice(0, 3);
 
         panel.innerHTML = `
+            <div class="dashboard-content">
 
             <!-- FILA 1: Heatmap | Tiempo | Racha | Wheel (wheel con canvas pequeño) -->
             <div class="dashboard-row-4" style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
@@ -1436,6 +1439,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
                     </div>
                 </div>
             </div>
+            </div><!-- /dashboard-content -->
         `;
 
         // ── Global Chart.js dark neon defaults ──
