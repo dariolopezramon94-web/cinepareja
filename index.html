@@ -1082,20 +1082,47 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         // Cálculos para los nuevos scorecards y gráficos
         let coupleScores = [];
         contents.forEach(c => {
-            if (c.ratings?.partner1 !== undefined && c.ratings?.partner2 !== undefined) {
+            if (c.ratings?.partner1 != null && c.ratings?.partner2 != null) {
                 let p1 = c.ratings.partner1, p2 = c.ratings.partner2;
                 let avg = (p1 + p2) / 2;
                 let diff = Math.abs(p1 - p2);
-                let score = avg - diff * 0.4;
-                coupleScores.push(score);
+                // 60% acuerdo + 40% calidad promedio, ambos normalizados a 0-100
+                let agreeScore = (1 - diff / 10) * 100;
+                let qualScore  = (avg / 10) * 100;
+                coupleScores.push(agreeScore * 0.6 + qualScore * 0.4);
             }
         });
-        let compatibility = coupleScores.length ? (coupleScores.reduce((a,b)=>a+b,0) / coupleScores.length) * 10 : 0;
+        let compatibility = coupleScores.length ? coupleScores.reduce((a,b)=>a+b,0) / coupleScores.length : 0;
         compatibility = Math.min(100, Math.max(0, compatibility));
         let totalHours = contents.reduce((acc, c) => acc + (c.durationMinutes || 0), 0) / 60;
         let weekends = new Set();
-        contents.forEach(c => { if (c.viewDate) { let date = new Date(c.viewDate); let day = date.getDay(); if (day === 0 || day === 6) weekends.add(date.toDateString()); } });
-        let streak = weekends.size;
+        contents.forEach(c => {
+            if (c.viewDate) {
+                let date = new Date(c.viewDate);
+                let day = date.getDay();
+                if (day === 0 || day === 6) {
+                    // Normalize to the Saturday of that weekend (Sun → previous Sat)
+                    let sat = new Date(date);
+                    if (day === 0) sat.setDate(sat.getDate() - 1);
+                    weekends.add(sat.toISOString().split('T')[0].substring(0, 7) + '-W' + sat.getDate());
+                }
+            }
+        });
+        // Streak = consecutive weekends (sorted week numbers)
+        const weekendList = Array.from(weekends).sort();
+        let streak = 0;
+        if (weekendList.length > 0) {
+            streak = 1;
+            let maxStreak = 1;
+            for (let i = 1; i < weekendList.length; i++) {
+                const prev = new Date(weekendList[i-1].replace(/-W\d+$/, ''));
+                const curr = new Date(weekendList[i].replace(/-W\d+$/, ''));
+                const diffDays = Math.round((curr - prev) / (1000*60*60*24));
+                if (diffDays <= 8) { streak++; maxStreak = Math.max(maxStreak, streak); }
+                else streak = 1;
+            }
+            streak = maxStreak;
+        }
         let bestMovie = null, bestScore = -1;
         contents.forEach(c => {
             if (c.ratings?.partner1 !== undefined && c.ratings?.partner2 !== undefined) {
@@ -1109,7 +1136,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         let topRecomendation = bestMovie ? bestMovie.title : 'Ninguna';
         let genreScores = new Map();
         contents.forEach(c => {
-            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
+            if (c.type === 'pelicula' && c.ratings?.partner1 != null && c.ratings?.partner2 != null) {
                 const cGenres = getGenres(c);
                 if (!cGenres.length) return;
                 let avg = (c.ratings.partner1 + c.ratings.partner2) / 2;
@@ -1127,7 +1154,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         if (!dominantGenre) dominantGenre = 'Sin datos';
         let polarizingMovie = null, maxDiff = -1;
         contents.forEach(c => {
-            if (c.ratings?.partner1 && c.ratings?.partner2) {
+            if (c.ratings?.partner1 != null && c.ratings?.partner2 != null) {
                 let diff = Math.abs(c.ratings.partner1 - c.ratings.partner2);
                 if (diff > maxDiff) { maxDiff = diff; polarizingMovie = c; }
             }
@@ -1139,7 +1166,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         const genreAccum = {}; // { genreName: { sumAfinidad, sumDiff, count } }
         const LIKED_SCORE = { 'Me encantó': 10, 'Me gustó': 7.5, 'Regular': 5, 'No me gustó': 2.5, 'La odié': 0 };
         contents.forEach(c => {
-            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
+            if (c.type === 'pelicula' && c.ratings?.partner1 != null && c.ratings?.partner2 != null) {
                 const cGenres = getGenres(c);
                 if (!cGenres.length) return;
                 // Afinidad: 50% rating + 30% entertainment + 20% likedScale
@@ -1207,7 +1234,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         // Battle chart
         let genreAvgP1 = new Map(), genreAvgP2 = new Map();
         contents.forEach(c => {
-            if (c.type === 'pelicula' && c.ratings?.partner1 && c.ratings?.partner2) {
+            if (c.type === 'pelicula' && c.ratings?.partner1 != null && c.ratings?.partner2 != null) {
                 getGenres(c).forEach(g => {
                     if (!genreAvgP1.has(g)) genreAvgP1.set(g, []);
                     if (!genreAvgP2.has(g)) genreAvgP2.set(g, []);
@@ -1253,16 +1280,16 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         // Sesiones
         let sessions = [];
         contents.forEach(c => {
-            if (c.viewDate && c.ratings?.partner1 && c.ratings?.partner2) {
+            if (c.viewDate && c.ratings?.partner1 != null && c.ratings?.partner2 != null) {
                 let avgRating = (c.ratings.partner1 + c.ratings.partner2) / 2;
                 let diff = Math.abs(c.ratings.partner1 - c.ratings.partner2);
                 let type = '';
-                if (avgRating >= 9 && diff <= 1) type = '✨ Perfecta';
-                else if (avgRating >= 8 && diff <= 1) type = '🍿 Relax';
-                else if (avgRating >= 7 && diff > 2) type = '🔥 Intensa';
-                else if (avgRating < 5 && diff > 3) type = '😂 Caótica';
-                else if (avgRating < 6) type = '💔 Decepcionante';
-                else type = '🍿 Relax';
+                // Orden importa: Perfecta antes que Relax, Caótica antes que Decepcionante
+                if (avgRating >= 8.5 && diff <= 1)      type = '✨ Perfecta';
+                else if (diff > 3 && avgRating < 5)     type = '😂 Caótica';
+                else if (avgRating < 5.5)               type = '💔 Decepcionante';
+                else if (diff >= 2.5)                   type = '🔥 Intensa';
+                else                                    type = '🍿 Relax';
                 sessions.push({ date: c.viewDate, type });
             }
         });
