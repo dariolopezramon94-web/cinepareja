@@ -252,16 +252,20 @@
             .carousel-wrapper { min-height:300px; overflow:hidden; }
             .chart-container { height:160px; }
             .scorecard .value { font-size:1.3rem; }
-            [style*="grid-template-columns: 1fr 2fr"],
-            [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns:1fr !important; }
-            /* Carrusel en móvil: tarjeta central grande, laterales pequeñas sin desborde */
+            /* Fila 1: Heatmap ocupa toda la fila, los 3 scorecards en fila debajo */
+            .dashboard-row-4 { grid-template-columns: 1fr !important; }
+            .dashboard-row-4 > *:first-child { grid-column: 1; }
+            /* Fila 2: Compatibilidad y Radar apilados */
+            .dashboard-row-2col { grid-template-columns: 1fr !important; }
+            /* Fila 3: Battle y Emociones apilados */
+            .dashboard-row-2equal { grid-template-columns: 1fr !important; }
+            /* Carrusel en móvil */
             .carousel-track-3 { overflow:hidden; width:100%; }
             .carousel-slide-3 { flex:0 0 30%; }
             .carousel-slide-3:first-child { margin-right:-5%; }
             .carousel-slide-3:last-child  { margin-left:-5%; }
             .carousel-slide-3.blurred .card { opacity:0.25; transform:scale(0.85); }
             .carousel-slide-3:not(.blurred) .card { transform:scale(1.0); }
-            /* Solo limitar card dentro del carrusel */
             .carousel-slide-3 .card { max-width:150px; }
         }
     </style>
@@ -1271,7 +1275,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
         panel.innerHTML = `
 
             <!-- FILA 1: Heatmap | Tiempo | Racha | Wheel (wheel con canvas pequeño) -->
-            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
+            <div class="dashboard-row-4" style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
 
                 <div class="chart-card-dashboard" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
                     <h3>Heatmap semanal</h3>
@@ -1299,7 +1303,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             </div>
 
             <!-- FILA 2: Compatibilidad (grande) | Radar (grande) -->
-            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
+            <div class="dashboard-row-2col" style="display:grid; grid-template-columns: 1fr 2fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
 
                 <div class="chart-card-dashboard" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.4rem; gap:0.5rem;">
                     <h3>Compatibilidad cinéfila</h3>
@@ -1362,7 +1366,7 @@ function showConfirm(msg, onConfirm, confirmLabel='Eliminar', cancelLabel='Cance
             </div>
 
             <!-- FILA 3: Battle | Emociones -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
+            <div class="dashboard-row-2equal" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem; align-items:stretch;">
                 <div class="chart-card-dashboard" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
                     <h3>Battle chart</h3>
                     <div id="battleContainer" style="width:100%;"></div>
